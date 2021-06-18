@@ -145,6 +145,7 @@ python eval.py \
     -H data/hypothesis_webnlg \
     -nr 6 \
     -m bleu,meteor,ter 
+cd ../..
 ```
 
 ## Replicating Our Result on DART
@@ -172,6 +173,7 @@ python eval.py \
     -H data/hypothesis_dart \
     -nr 6 \
     -m bleu,meteor,ter 
+cd ../..
 ```
 
 ## Acknowledgements
