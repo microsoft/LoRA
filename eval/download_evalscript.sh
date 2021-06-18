@@ -1,6 +1,8 @@
 #!/bin/bash
 
-echo "downloading e2e-metrics"
+cd eval
+echo "installing evaluation dependencies"
+echo "downloading e2e-metrics..."
 git clone https://github.com/tuetschek/e2e-metrics e2e
 
 echo "downloading GenerationEval for webnlg and dart..."
@@ -10,5 +12,6 @@ cd GenerationEval
 rm -r data/en
 rm -r data/ru
 cd ..
+mv eval.py GenerationEval/
 
-echo "script complete"
+echo "script complete!"

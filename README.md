@@ -43,7 +43,7 @@ There are several important directories:
  bash download_pretrained_checkpoints.sh
  bash create_datasets.sh
  cd ./eval
- bash download_dependencies.sh
+ bash download_evalscript.sh
  cd ..
  ```
 
@@ -146,7 +146,7 @@ python eval.py \
 
 ## Replicating Our Result on DART
 
-1. Follow steps 1 and 2 from E2E pipeline by replacing references to E2E with webnlg (see our paper for hyperparameters)
+1. Follow steps 1 and 2 from E2E pipeline by replacing references to E2E with dart (see our paper for hyperparameters)
 
 2. Decode outputs from beam search (step 2 above)
 ```
@@ -161,7 +161,7 @@ python src/gpt2_decode.py \
         --tokenize --lower
 ```
 
-3. Run evaluation on WebNLG test set
+3. Run evaluation on Dart test set
 ```
 cd ./eval/GenerationEval/
 python eval.py \
