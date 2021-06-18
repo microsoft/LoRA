@@ -28,7 +28,7 @@ parser.add_argument('--output_pred_file', default=None, type=str, help='output p
 parser.add_argument('--ref_unique_file', default=None, type=str, help='reference unique id file')
 
 parser.add_argument('--ref_type', default='e2e', choices=['e2e', 'webnlg'], help='e2e style reference type; webnlg style reference type.')
-parser.add_argument('--ref_num', default=0, type=int, help='number of references.')
+parser.add_argument('--ref_num', default=4, type=int, help='number of references.')
 
 
 parser.add_argument('--tokenize', action='store_true', help='')
