@@ -56,7 +56,7 @@ There are several directories in this repo:
 
 1. Train GPT-2 Medium with LoRA (see our paper for hyperparameters for GPT-2 Medium)
 ```
-python -m torch.distributed.launch --nproc_per_node=4 src/gpt2_ft.py \
+python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_ft.py \
     --train_data ./data/e2e/train.jsonl \
     --valid_data ./data/e2e/valid.jsonl \
     --train_batch_size 2 \
@@ -85,7 +85,7 @@ python -m torch.distributed.launch --nproc_per_node=4 src/gpt2_ft.py \
 
 2. Generate outputs from the trained model using beam search:
 ```
-python -m torch.distributed.launch --nproc_per_node=4 src/gpt2_beam.py \
+python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_beam.py \
     --data ./data/e2e/test.jsonl \
     --batch_size 1 \
     --seq_len 512 \
