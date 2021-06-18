@@ -1,3 +1,7 @@
+#  ------------------------------------------------------------------------------------------
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+#  ------------------------------------------------------------------------------------------
 import os, sys
 import glob
 import random
@@ -9,8 +13,6 @@ import json
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-
-#from utils.vocabulary import Vocab
 
 
 class LMOrderedIterator(object):

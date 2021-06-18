@@ -1,3 +1,7 @@
+#  ------------------------------------------------------------------------------------------
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+#  ------------------------------------------------------------------------------------------
 import argparse
 import time
 import math
@@ -10,6 +14,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
+
 
 def add_gpu_params(parser: argparse.ArgumentParser):
   parser.add_argument("--platform", default='local', type=str, 

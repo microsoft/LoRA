@@ -1,3 +1,7 @@
+#  ------------------------------------------------------------------------------------------
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+#  ------------------------------------------------------------------------------------------
 import json
 import numpy as np
 import argparse
@@ -15,6 +19,7 @@ import torch.utils.data
 
 import encoder
 
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--vocab', type=str, default=None, help='vocab path')
@@ -27,8 +32,8 @@ parser.add_argument('--output_pred_file', default=None, type=str, help='output p
 
 parser.add_argument('--ref_unique_file', default=None, type=str, help='reference unique id file')
 
-parser.add_argument('--ref_type', default='e2e', choices=['e2e', 'webnlg'], help='e2e style reference type; webnlg style reference type.')
-parser.add_argument('--ref_num', default=0, type=int, help='number of references.')
+parser.add_argument('--ref_type', default='e2e', choices=['e2e', 'webnlg', 'dart'], help='e2e style reference type; webnlg style reference type.')
+parser.add_argument('--ref_num', default=4, type=int, help='number of references.')
 
 
 parser.add_argument('--tokenize', action='store_true', help='')
@@ -132,7 +137,7 @@ if __name__ == "__main__":
           ref_writer.write('\n')
           pred_writer.write(post_process(hyp, args.tokenize, args.lower) + '\n')
 
-    elif args.ref_type == 'webnlg':
+    elif args.ref_type in ['webnlg', 'dart']:
       if not os.path.exists(args.output_ref_file):
         os.makedirs(args.output_ref_file)
 

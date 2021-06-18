@@ -1,3 +1,7 @@
+#  ------------------------------------------------------------------------------------------
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+#  ------------------------------------------------------------------------------------------
 import json
 import numpy as np
 
@@ -25,6 +29,7 @@ import collections
 from collections import Counter
 from collections import OrderedDict
 from progress.bar import Bar as Bar
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--input', default=None, type=str, help='ft input file')
