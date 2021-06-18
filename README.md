@@ -4,13 +4,13 @@ This repo contains the implementation of LoRA in GPT-2 and steps to replicate th
 
 **LoRA: Low-Rank Adaptation of Large Language Models** <br>
 *Edward J. Hu\*, Yelong Shen\*, Phil Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Weizhu Chen* <br>
-Paper: https://arxiv.org/abs/2106.09685 <br>
+Paper: https://arxiv.org/abs/... <br>
 
 LoRA reduces the number of trainable parameters by learning pairs of rank-decompostion matrices and freezing the original weights.
 This vastly reduces the storage requirement for large language models adapted to specific tasks and enables efficient task-switching during deployment without introducing inference latency.
 LoRA also outperforms several other adaptation methods including prefix-tuning and fine-tuning.
 <p>
-<img src="figures/LoRA_GPT3.PNG" width="800" >
+<img src="figures/LoRA_GPT3.PNG" width="1000" >
 </p>
 <p>
 <img src="figures/LoRA_GPT2.PNG" width="800" >
@@ -21,19 +21,16 @@ This repo reproduces our experiments on GPT-2.
 ## Repository Overview
 
 Our implementation is based on the fine-tuning code for GPT-2 in [Hugging Face](https://huggingface.co/).
-There are several directories in this repo:
-* [src/](src) contains the source code used for data processing, training, and decoding.
-* [eval/](eval) contains the code for task-specific evaluation scripts.
+There are several important directories:
+* [train/](train) contains the code used for training.
+* [eval/](eval) contains the code for decoding and evaluation.
 * [data/](data) contains the raw data we used in our experiments.
-* [vocab/](vocab) contains the GPT-2 vocabulary files.
+* [vocab/](vocab) contains the GPT-2 vocabulary.
 
 
 ## Getting Started
 
- 1. You can start with the following docker image: `nvcr.io/nvidia/pytorch:20.03-py3` on a GPU-capable machine, but any generic PyTorch image should work.
- ```
- docker run -it nvcr.io/nvidia/pytorch:20.03-py3
- ```
+ 1. You can start with the following docker image: `nvcr.io/nvidia/pytorch:20.03-py3` but any generic PyTorch image should work.
 
  2. Clone the repo and install dependencies in a virtual environment (remove sudo if running in docker container):
  ```
@@ -50,66 +47,61 @@ There are several directories in this repo:
  cd ..
  ```
 
-#### Now we are ready to replicate the results in our paper.
+### Now you are ready to replicate our results.
 
 ## Replicating Our Result on E2E
 
-1. Train GPT-2 Medium with LoRA (see our paper for hyperparameters for GPT-2 Large):
+1. Train GPT-2 Medium with LoRA (see our paper for hyperparameters for GPT-2 Medium)
 ```
-CUDA_VISIBLE_DEVICES=0 \
-python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_ft.py \
-                                   --train_data ./data/e2e/train.jsonl \
-                                   --valid_data ./data/e2e/valid.jsonl \
-                                   --train_batch_size 8 \
-                                   --grad_acc 1 \
-                                   --valid_batch_size 4 \
-                                   --seq_len 512 \
-                                   --model_card gpt2.md \
-                                   --init_checkpoint ./pretrained_checkpoints/gpt2-medium-pytorch_model.bin \
-                                   --platform local \
-                                   --clip 0.0 \
-                                   --lr 0.0002 \
-                                   --weight_decay 0.01 \
-                                   --correct_bias \
-                                   --adam_beta2 0.999 \
-                                   --scheduler linear \
-                                   --warmup_step 500 \
-                                   --max_epoch 5 \
-                                   --save_interval 1000 \
-                                   --lora_dim 4 \
-                                   --lora_alpha 32 \
-                                   --lora_dropout 0.1 \
-                                   --label_smooth 0.1 \
-                                   --work_dir ./trained_models/GPT2_M/e2e \
-                                   --random_seed 110
-```
-Note that the batch size is per GPU. If you want to use multiple GPUs, say 4, use `CUDA_VISIBLE_DEVICES=0,1,2,3` and `--nproc_per_node=4`. If running out of VRAM, consider using gradient accumulation.
-
-2. Decode from the trained model using beam search:
-```
-CUDA_VISIBLE_DEVICES=0 \
-python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_beam.py \
-                                   --data ./data/e2e/test.jsonl \
-                                   --batch_size 4 \
-                                   --seq_len 512 \
-                                   --eval_len 64 \
-                                   --model_card gpt2.md \
-                                   --init_checkpoint ./trained_models/GPT2_M/e2e/model.20000.pt \
-                                   --platform local \
-                                   --lora_dim 4 \
-                                   --lora_alpha 32 \
-                                   --beam 10 \
-                                   --length_penalty 0.8 \
-                                   --no_repeat_ngram_size 4 \
-                                   --repetition_penalty 1.0 \
-                                   --eos_token_id 628 \
-                                   --work_dir ./trained_models/GPT2_M/e2e \
-                                   --output_file predict.20000.b10p08.jsonl
+python -m torch.distributed.launch --nproc_per_node=4 src/gpt2_ft.py \
+        --train_data ./data/e2e/train.jsonl \
+        --valid_data ./data/e2e/valid.jsonl \
+        --train_batch_size 2 \
+        --grad_acc 1 \
+        --valid_batch_size 1 \
+        --seq_len 512 \
+        --model_card gpt2.md \
+        --init_checkpoint ./pretrained_checkpoints/gpt2-medium-pytorch_model.bin \
+        --platform local \
+        --clip 0.0 \
+        --lr 0.0002 \
+        --weight_decay 0.01 \
+        --correct_bias \
+        --adam_beta2 0.999 \
+        --scheduler linear \
+        --warmup_step 500 \
+        --max_epoch 5 \
+        --save_interval 1000 \
+        --lora_dim 4 \
+        --lora_alpha 32 \
+        --lora_dropout 0.1 \
+        --label_smooth 0.1 \
+        --work_dir ./trained_models/GPT2_M/e2e \
+        --random_seed 110
 ```
 
+2. Generate outputs from the trained model using beam search:
+```
+python -m torch.distributed.launch --nproc_per_node=4 src/gpt2_beam.py \
+        --data ./data/e2e/test.jsonl \
+        --batch_size 1 \
+        --seq_len 512 \
+        --eval_len 64 \
+        --model_card gpt2.lg \
+        --init_checkpoint ./trained_models/GPT2_M/e2e/model.20000.pt \
+        --platform local \
+        --lora_dim 4 \
+        --lora_alpha 32 \
+        --beam 10 \
+        --length_penalty 0.8 \
+        --no_repeat_ngram_size 4 \
+        --repetition_penalty 1.0 \
+        --eos_token_id 628 \
+        --work_dir ./trained_models/GPT2_M/e2e \
+        --output_file predict.20000.b10p08.jsonl
+```
 
-3. Evaluate on E2E test set
-
+3. Decode outputs from step (2)
 ```
 python src/gpt2_decode.py \
         --vocab ./vocab \
@@ -117,46 +109,70 @@ python src/gpt2_decode.py \
         --input_file ./data/e2e/test_formatted.jsonl \
         --output_ref_file e2e_ref.txt \
         --output_pred_file e2e_pred.txt
+```
+
+4. Run evaluation on E2E test set
+
+```
 python eval/e2e/measure_scores.py e2e_ref.txt e2e_pred.txt -p
 ```
 
 ## Replicating Our Result on WebNLG
 
-1. Follow steps 1-2 from E2E pipeline by replacing references to E2E with webnlg (see our paper for hyperparameters)
+1. Follow steps 1 and 2 from E2E pipeline by replacing references to E2E with webnlg (see our paper for hyperparameters)
 
-2. run evaluation
+2. Decode outputs from beam search (step 2 above)
 ```
-cd ./eval/webnlg/
-bash run_eval.sh webnlg_pred.txt {optional-name-for-eval-job}
+python src/gpt2_decode.py \
+        --vocab ./vocab \
+        --sample_file ./trained_models/GPT2_M/webnlg/predict.20000.b10p08.jsonl \
+        --input_file ./data/webnlg_challenge_2017/test_formatted.jsonl \
+        --ref_type webnlg \
+        --output_ref_file eval/GenerationEval/data/references_webnlg \
+        --output_pred_file eval/GenerationEval/data/hypothesis_webnlg
+```
+
+3. Run evaluation on WebNLG test set
+```
+cd ./eval/GenerationEval/
+python eval.py -R data/references_webnlg/reference -H data/hypothesis_webnlg
 ```
 
 ## Replicating Our Result on DART
 
-1. Follow steps 1-2 from E2E pipeline by replacing references to E2E with dart (see our paper for hyperparameters)
+1. Follow steps 1 and 2 from E2E pipeline by replacing references to E2E with webnlg (see our paper for hyperparameters)
 
-2. run evaluation
+2. Decode outputs from beam search (step 2 above)
 ```
-cd ./eval/dart/
-bash run_eval.sh dart_pred.txt
+python src/gpt2_decode.py \
+        --vocab ./vocab \
+        --sample_file ./trained_models/GPT2_M/dart/predict.20000.b10p08.jsonl \
+        --input_file ./data/dart/test_formatted.jsonl \
+        --ref_type dart \
+        --output_ref_file eval/GenerationEval/data/references_dart \
+        --output_pred_file eval/GenerationEval/data/hypothesis_dart
 ```
 
-## Acknowledgements
-We thank in alphabetical order Jianfeng Gao, Jade Huang, Jiayuan Huang, Lisa Xiang Li, Xiaodong Liu, Yabin Liu, Benjamin Van Durme, Luis Vargas, Haoran Wei, Peter Welinder, and Greg Yang for providing valuable feedback.
+3. Run evaluation on WebNLG test set
+```
+cd ./eval/GenerationEval/
+python eval.py -R data/references_dart/reference -H data/hypothesis_dart
+```
+
+## Acknowledgement
+We thank in alphabetical order Jianfeng Gao, Jade Huang, Xiaodong Liu, Yabin Liu, Haoran Wei, Benjamin Van Durme, Peter Welinder, and Greg Yang for providing valuable feedback.
+
 
 ## Contact
-Please contact us if you have any questions.
-* Edward Hu (edwardhu@microsoft.com)
-* Yelong Shen (yeshe@microsoft.com)
-* Phillip Wallis (phwallis@microsoft.com)
-* Weizhu Chen (wzchen@microsoft.com)
+Please contact Edward Hu (edwardhu at microsoft dot com) if you have any questions for our work or for this repository.
 
 ## Citation
 ```
-@misc{hu2021lora,
+@misc{hu2020lora,
     title={LoRA: Low-Rank Adaptation of Large Language Models},
     author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Chen, Weizhu},
     year={2021},
-    eprint={2106.09685},
+    eprint={2106.{...}},
     archivePrefix={arXiv},
     primaryClass={cs.CL}
 }
