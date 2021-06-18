@@ -19,6 +19,7 @@ import torch.utils.data
 
 import encoder
 
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--vocab', type=str, default=None, help='vocab path')

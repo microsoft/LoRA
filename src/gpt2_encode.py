@@ -30,6 +30,7 @@ from collections import Counter
 from collections import OrderedDict
 from progress.bar import Bar as Bar
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--input', default=None, type=str, help='ft input file')
 parser.add_argument('--vocab', type=str, default=None, help='vocab path')

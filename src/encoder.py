@@ -7,6 +7,7 @@ import json
 import regex as re
 from functools import lru_cache
 
+
 @lru_cache()
 def bytes_to_unicode():
     """
