@@ -4,4 +4,4 @@
 * Code for WebNLG and Dart was borrowed from https://github.com/WebNLG/GenerationEval.git
 
 Before running evaluation for the first time you must run
-`bash download_dependencies.sh`
+`bash download_evalscript.sh`

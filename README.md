@@ -3,14 +3,14 @@
 This repo contains the implementation of LoRA in GPT-2 and steps to replicate the results in our recent paper
 
 **LoRA: Low-Rank Adaptation of Large Language Models** <br>
-*Edward J. Hu\*, Yelong Shen\*, Phil Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Weizhu Chen* <br>
-Paper: https://arxiv.org/abs/... <br>
+*Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Weizhu Chen* <br>
+Paper: https://arxiv.org/abs/2106.09685 <br>
 
 LoRA reduces the number of trainable parameters by learning pairs of rank-decompostion matrices and freezing the original weights.
 This vastly reduces the storage requirement for large language models adapted to specific tasks and enables efficient task-switching during deployment without introducing inference latency.
 LoRA also outperforms several other adaptation methods including prefix-tuning and fine-tuning.
 <p>
-<img src="figures/LoRA_GPT3.PNG" width="1000" >
+<img src="figures/LoRA_GPT3.PNG" width="800" >
 </p>
 <p>
 <img src="figures/LoRA_GPT2.PNG" width="800" >
@@ -21,16 +21,19 @@ This repo reproduces our experiments on GPT-2.
 ## Repository Overview
 
 Our implementation is based on the fine-tuning code for GPT-2 in [Hugging Face](https://huggingface.co/).
-There are several important directories:
-* [train/](train) contains the code used for training.
-* [eval/](eval) contains the code for decoding and evaluation.
+There are several directories in this repo:
+* [src/](src) contains the source code used for data processing, training, and decoding.
+* [eval/](eval) contains the code for task-specific evaluation scripts.
 * [data/](data) contains the raw data we used in our experiments.
-* [vocab/](vocab) contains the GPT-2 vocabulary.
+* [vocab/](vocab) contains the GPT-2 vocabulary files.
 
 
 ## Getting Started
 
- 1. You can start with the following docker image: `nvcr.io/nvidia/pytorch:20.03-py3` but any generic PyTorch image should work.
+ 1. You can start with the following docker image: `nvcr.io/nvidia/pytorch:20.03-py3` on a GPU-capable machine, but any generic PyTorch image should work.
+ ```
+ docker run -it nvcr.io/nvidia/pytorch:20.03-py3
+ ```
 
  2. Clone the repo and install dependencies in a virtual environment (remove sudo if running in docker container):
  ```
@@ -47,7 +50,7 @@ There are several important directories:
  cd ..
  ```
 
-### Now you are ready to replicate our results.
+#### Now we are ready to replicate the results in our paper.
 
 ## Replicating Our Result on E2E
 
@@ -171,20 +174,24 @@ python eval.py \
     -m bleu,meteor,ter 
 ```
 
-## Acknowledgement
-We thank in alphabetical order Jianfeng Gao, Jade Huang, Xiaodong Liu, Yabin Liu, Haoran Wei, Benjamin Van Durme, Peter Welinder, and Greg Yang for providing valuable feedback.
+## Acknowledgements
+We thank in alphabetical order Jianfeng Gao, Jade Huang, Jiayuan Huang, Lisa Xiang Li, Xiaodong Liu, Yabin Liu, Benjamin Van Durme, Luis Vargas, Haoran Wei, Peter Welinder, and Greg Yang for providing valuable feedback.
 
 
 ## Contact
-Please contact Edward Hu (edwardhu at microsoft dot com) if you have any questions for our work or for this repository.
+Please contact us if you have any questions.
+* Edward Hu (edwardhu@microsoft.com)
+* Yelong Shen (yeshe@microsoft.com)
+* Phillip Wallis (phwallis@microsoft.com)
+* Weizhu Chen (wzchen@microsoft.com)
 
 ## Citation
 ```
-@misc{hu2020lora,
+@misc{hu2021lora,
     title={LoRA: Low-Rank Adaptation of Large Language Models},
     author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Chen, Weizhu},
     year={2021},
-    eprint={2106.{...}},
+    eprint={2106.09685},
     archivePrefix={arXiv},
     primaryClass={cs.CL}
 }
