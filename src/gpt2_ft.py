@@ -332,7 +332,7 @@ if __name__ == '__main__':
         if args.rank == 0:
           print('-' * 100)
           print('End of training')
-          break
+        break
   except KeyboardInterrupt:
     if args.rank == 0:
       print('-' * 100)
