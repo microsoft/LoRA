@@ -25,7 +25,7 @@ def add_optimizer_params(parser: argparse.ArgumentParser):
     parser.add_argument('--weight_decay', default=0.01, type=float, help='weight decay rate.')
     parser.add_argument('--correct_bias', action='store_true', help='correct adam bias term.')
     parser.add_argument('--adam_epislon', default=1e-6, type=float, help='adam epsilon.')
-    parser.add_argument('--no_decay_bias', action='store_true', help='no weight decay on bias weigh.')
+    parser.add_argument('--no_decay_bias', action='store_true', help='no weight decay on bias weight.')
     parser.add_argument('--adam_beta1', default=0.9, type=float, help='adam beta1 term.')
     parser.add_argument('--adam_beta2', default=0.98, type=float, help='adam beta2 term.')
     
@@ -236,7 +236,7 @@ def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
 
 
 def get_constant_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, last_epoch=-1):
-    """ Create a schedule with a learning rate that decreases linearly after
+    """ Create a schedule with a learning rate that becomes constant after
     linearly increasing during a warmup period.
     """
     def lr_lambda(current_step):
