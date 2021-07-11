@@ -96,7 +96,7 @@ python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_beam.py \
     --lora_dim 4 \
     --lora_alpha 32 \
     --beam 10 \
-    --length_penalty 0.8 \
+    --length_penalty 0.9 \
     --no_repeat_ngram_size 4 \
     --repetition_penalty 1.0 \
     --eos_token_id 628 \
