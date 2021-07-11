@@ -1,7 +1,3 @@
-#  ------------------------------------------------------------------------------------------
-#  Copyright (c) Microsoft Corporation. All rights reserved.
-#  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
-#  ------------------------------------------------------------------------------------------
 import logging
 import math
 import os
@@ -63,6 +59,15 @@ class AdamW(Optimizer):
             raise ValueError("Invalid epsilon value: {} - should be >= 0.0".format(eps))
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, correct_bias=correct_bias)
         super().__init__(params, defaults)
+
+
+    def reset_state(self):
+        for group in param_groups:
+            for p in group['params']:
+                state = self.state[p]
+                state['step'] = 0
+                state["exp_avg"] = torch.zeros_like(p.data)
+                state["exp_avg_sq"] = torch.zeros_like(p.data)
 
     def step(self, closure=None):
         """Performs a single optimization step.
@@ -273,6 +278,10 @@ def create_adam_optimizer(model, lr, weight_decay, optimizer_grouped_parameters=
     optimizer = AdamW(optimizer_grouped_parameters, lr=lr, betas=(beta1, beta2), eps=adam_epislon, weight_decay=weight_decay, correct_bias=correct_bias)
     return optimizer
 
+def create_sgd_optimizer(model, lr):
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.0)
+    return optimizer
+    
 #def create_parameter_optimizer(, args):
 
 def create_adam_optimizer_from_args(model, args, grouped_parameters=None):
@@ -303,3 +312,4 @@ def create_optimizer_scheduler(optimizer, args):
         # constant leanring rate.
         scheduler = None
     return scheduler
+

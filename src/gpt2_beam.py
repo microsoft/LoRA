@@ -1,27 +1,31 @@
-#  ------------------------------------------------------------------------------------------
-#  Copyright (c) Microsoft Corporation. All rights reserved.
-#  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
-#  ------------------------------------------------------------------------------------------
 import argparse
 import time
+import math
 import os, sys
-import json
-import numpy as np
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import torch
+torch.set_printoptions(threshold=100000)
+
+import numpy as np
+
+from gpu import add_gpu_params, parse_gpu, distributed_opt, distributed_gather, distributed_sync, cleanup
+
+from exp_utils import create_exp_dir
+
+from data_utils import FT_Dataset 
+from model import GPT2Config, GPT2LMModel
+import itertools
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
+
 from torch import Tensor, device, dtype, nn
 from torch.nn import CrossEntropyLoss
 from torch.nn import functional as F
-torch.set_printoptions(threshold=100000)
 
-from gpu import add_gpu_params, parse_gpu, distributed_gather, distributed_sync, cleanup
-from exp_utils import create_exp_dir
-from data_utils import FT_Dataset 
-from model import GPT2Config, GPT2LMModel
 
+import json
 
 parser = argparse.ArgumentParser(description='PyTorch GPT2 evaluation script.')
 
@@ -62,6 +66,8 @@ parser.add_argument('--no_repeat_ngram_size', type=int, default=4, help='no_repe
 parser.add_argument('--repetition_penalty', type=float, default=1.0, help='repetition_penalty')
 
 parser.add_argument('--eos_token_id', action='append', type=int, default=[50256], help='eos token id')
+
+#parser.add_argument('--d', action='append', type=int, default=[-1])
 
 parser.add_argument('--output_file', type=str, default='beam_prediction.jsonl', help='output file name')
 
@@ -186,6 +192,11 @@ def beam(model, data_iter, args):
       _query = data['query'].to(args.device)
       _query_len = data['query_len'].to(args.device)
 
+      ## local adaptation start.
+
+      ## local adaptation end.
+
+
       output = None
       score = None
 
@@ -198,13 +209,21 @@ def beam(model, data_iter, args):
       past = None
       len_past = None
 
-      
       _query = _query.repeat(1, num_beams).view(batch_size * num_beams, -1)
       _query_len = _query_len.unsqueeze(-1).repeat(1, num_beams).view(-1)
 
 
       # scores for each sentence in the beam
       beam_scores = torch.zeros((batch_size, num_beams), dtype=torch.float, device=_query.device)
+
+      # for greedy decoding it is made sure that only tokens of the first beam are considered to avoid sampling the exact same tokens three times
+      #beam_scores[:, 1:] = -1e9
+      #beam_scores = beam_scores.view(-1)  # shape (batch_size * num_beams,)
+
+
+      #self.beam_scores = []
+      #beam_tokens = []
+      #beam_idxes = []
 
       best_sequence = torch.zeros((batch_size, args.eval_len), dtype=torch.long, device=_query.device)
       best_score = {}
@@ -216,6 +235,9 @@ def beam(model, data_iter, args):
             logits, past = model(_query) 
             logits = logits[_batch, (_query_len-1).long(), :] # batch_size * beam, vocab
           else:
+            #print('token_id.shape', token_id.shape, token_id)
+            #print('past.shape', past[0].shape)
+            #print('len_past.shape', len_past.shape, len_past)
             
             logits, past = model(token_id, past=past, len_past=len_past) 
             logits = logits[:, -1, :]  # batch_size * beam, vocab
@@ -245,14 +267,37 @@ def beam(model, data_iter, args):
           else:
             next_scores = beam_scores.unsqueeze(-1) + _logprob.view(batch_size, num_beams, -1)
             next_scores = next_scores.view(batch_size, -1) # batch_size, beam * vocab
+          
+            
+          #else:
+          #  next_scores = _logprob + beam_scores[:, None].expand_as(_logprob)  # (batch_size * num_beams, vocab_size)
+
+          # re-organize to group the beam together (we are keeping top hypothesis accross beams)
+          #next_scores = next_scores.view(
+          #    batch_size, num_beams * vocab_size
+          #)  # (batch_size, num_beams * vocab_size)
+
+          #print('vocab_size', vocab_size)
+          #print('next_scores.shape (1)', next_scores.shape)
 
           next_scores, next_tokens = torch.topk(next_scores, num_beams, dim=1, largest=True, sorted=True)   # batch_size, num_beams
+
+          #print('next_scores.shape (2)', next_scores.shape, next_scores)
+          #print('next_tokens.shape (2)', next_tokens.shape, next_tokens)
           
           beam_id = (next_tokens // vocab_size).view(-1)  # batch_size * num_beams
           token_id = (next_tokens % vocab_size).view(-1).unsqueeze(-1) # batch_size, num_beams
 
           beam_idx = beam_id.view(batch_size, num_beams) + (_batch * num_beams).unsqueeze(-1)
+          # past, 2, batch_size * beam, *, *, *, 
+          #if past is not None:
+          #print('beam_id', beam_id)
+          #print('beam_idx', beam_idx)
+          #print('token_id', token_id.shape, token_id)
+
+          #print('past.shape (1)', past[0].shape)
           past = _reorder_cache(past, beam_idx.view(-1))
+          #print('past.shape (2)', past[0].shape)
           
           beam_scores = next_scores # batch_size, num_beams
 
@@ -262,7 +307,7 @@ def beam(model, data_iter, args):
             history = token_id.detach()
           else:
             history = torch.cat((history[beam_idx.view(-1)], token_id.detach()), dim=1).detach()
-
+          #print('history.shape (1)', history.shape)
           _add_beam_candidate(best_score, best_sequence, batch_size, num_beams, beam_scores, history, eos_token_id = args.eos_token_id)
         
         _add_beam_candidate(best_score, best_sequence, batch_size, num_beams, beam_scores, history)
@@ -306,8 +351,10 @@ if __name__ == '__main__':
     args.logging = create_exp_dir(args.work_dir)
 
   valid_data = FT_Dataset(args.data, args.batch_size, args.seq_len, args.eval_len, prefix_len=args.prefix_len, infix_len=args.infix_len)  
-
-  valid_loader = DataLoader(valid_data, batch_size=args.batch_size, num_workers=0, shuffle=False, pin_memory=False, drop_last=False, sampler=torch.utils.data.distributed.DistributedSampler(valid_data))
+  valid_sampler = None # torch.utils.data.distributed.DistributedSampler(valid_data)
+  #print('number of validation samples', valid_data.num_examples, 'number of validation minibatches', valid_data.num_batches, 'total_size', valid_sampler.total_size, 'dataset', len(valid_data))
+  valid_loader = DataLoader(valid_data, batch_size=args.batch_size, num_workers=0, shuffle=False, pin_memory=False, drop_last=False, 
+                            sampler=valid_sampler)
 
   if args.model_card == 'gpt2.sm':
     config = GPT2Config(n_embd=768, n_layer=12, n_head=12, lora_attn_dim=args.lora_dim, lora_attn_alpha=args.lora_alpha,
