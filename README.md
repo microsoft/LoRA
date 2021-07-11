@@ -91,7 +91,7 @@ python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_beam.py \
     --seq_len 512 \
     --eval_len 64 \
     --model_card gpt2.md \
-    --init_checkpoint ./trained_models/GPT2_M/e2e/model.20000.pt \
+    --init_checkpoint ./trained_models/GPT2_M/e2e/model.26000.pt \
     --platform local \
     --lora_dim 4 \
     --lora_alpha 32 \
@@ -101,14 +101,14 @@ python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_beam.py \
     --repetition_penalty 1.0 \
     --eos_token_id 628 \
     --work_dir ./trained_models/GPT2_M/e2e \
-    --output_file predict.20000.b10p08.jsonl
+    --output_file predict.26000.b10p09.jsonl
 ```
 
 3. Decode outputs from step (2)
 ```
 python src/gpt2_decode.py \
     --vocab ./vocab \
-    --sample_file ./trained_models/GPT2_M/e2e/predict.20000.b10p08.jsonl \
+    --sample_file ./trained_models/GPT2_M/e2e/predict.26000.b10p09.jsonl \
     --input_file ./data/e2e/test_formatted.jsonl \
     --output_ref_file e2e_ref.txt \
     --output_pred_file e2e_pred.txt
