@@ -351,7 +351,7 @@ if __name__ == '__main__':
     args.logging = create_exp_dir(args.work_dir)
 
   valid_data = FT_Dataset(args.data, args.batch_size, args.seq_len, args.eval_len, prefix_len=args.prefix_len, infix_len=args.infix_len)  
-  valid_sampler = None # torch.utils.data.distributed.DistributedSampler(valid_data)
+  valid_sampler = torch.utils.data.distributed.DistributedSampler(valid_data)
   #print('number of validation samples', valid_data.num_examples, 'number of validation minibatches', valid_data.num_batches, 'total_size', valid_sampler.total_size, 'dataset', len(valid_data))
   valid_loader = DataLoader(valid_data, batch_size=args.batch_size, num_workers=0, shuffle=False, pin_memory=False, drop_last=False, 
                             sampler=valid_sampler)
