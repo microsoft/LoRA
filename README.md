@@ -59,9 +59,9 @@ There are several directories in this repo:
 python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_ft.py \
     --train_data ./data/e2e/train.jsonl \
     --valid_data ./data/e2e/valid.jsonl \
-    --train_batch_size 2 \
+    --train_batch_size 8 \
     --grad_acc 1 \
-    --valid_batch_size 1 \
+    --valid_batch_size 8 \
     --seq_len 512 \
     --model_card gpt2.md \
     --init_checkpoint ./pretrained_checkpoints/gpt2-medium-pytorch_model.bin \
