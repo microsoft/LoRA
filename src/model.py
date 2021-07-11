@@ -1,29 +1,30 @@
+#  ------------------------------------------------------------------------------------------
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+#  ------------------------------------------------------------------------------------------
 import logging
 import math
 import os
+from collections import OrderedDict 
+import copy
+import math
 
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
 import torch.nn.functional as F
-
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
-
-from collections import OrderedDict 
-
-
-import copy
-
-import math
-
 from torch.nn.parameter import Parameter
+
 
 def gelu(x):
     return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
 
+
 def gelu_fast(x):
     return 0.5 * x * (1.0 + torch.tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)))
+
 
 def gelu_new(x):
     """ Implementation of the gelu activation function currently in Google Bert repo (identical to OpenAI GPT).
@@ -31,8 +32,10 @@ def gelu_new(x):
     """
     return 0.5 * x * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * torch.pow(x, 3.0))))
 
+
 def swish(x):
     return x * torch.sigmoid(x)
+
 
 def _gelu_python(x):
     """ Original Implementation of the gelu activation function in Google Bert repo when initially created.
@@ -42,6 +45,7 @@ def _gelu_python(x):
         Also see https://arxiv.org/abs/1606.08415
     """
     return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
+
 
 class LayerNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-12):
@@ -57,6 +61,7 @@ class LayerNorm(nn.Module):
         x = (x - u) / torch.sqrt(s + self.variance_epsilon)
         return self.weight * x + self.bias
 
+
 class Conv1D(nn.Module):
     def __init__(self, nf, nx):
         super(Conv1D, self).__init__()
@@ -71,7 +76,6 @@ class Conv1D(nn.Module):
         x = torch.addmm(self.bias, x.view(-1, x.size(-1)), self.weight)
         x = x.view(*size_out)
         return x
-
 
 
 class Attention(nn.Module):
@@ -244,6 +248,7 @@ class Attention(nn.Module):
         a = self.c_proj(a)
         return a, present
 
+
 # sequence attention, considering relative position.
 class SeqAttention(nn.Module): #RelMultiHeadAttn):
     #def __init__(self, *args, **kwargs):
@@ -306,8 +311,6 @@ class SeqAttention(nn.Module): #RelMultiHeadAttn):
         if self.rel_pos == 'full':
             self.r_q_net = nn.Linear(self.d_model, self.n_head * self.d_head, bias=False)
 
-
-        ########################################################################################
     def _rel_shift_trans(self, x, qlen):
         # x        : rlen x klen x bsz x n_head
         # zero_pad : 1 x klen x bsz x n_head
@@ -327,7 +330,6 @@ class SeqAttention(nn.Module): #RelMultiHeadAttn):
 
         x = x_padded[-qlen:].contiguous() #[1:].view_as(x)
         return x
-
 
     def _rel_shift(self, x):
         # x        : qlen x klen x bsz x n_head
@@ -578,6 +580,7 @@ class SeqAttention(nn.Module): #RelMultiHeadAttn):
 
         return output
 
+
 class MLP(nn.Module):
     def __init__(self, n_state, config):  # in MLP: n_state=3072 (4 * n_embd)
         super(MLP, self).__init__()
@@ -590,6 +593,7 @@ class MLP(nn.Module):
         h = self.act(self.c_fc(x))
         h2 = self.c_proj(h)
         return h2
+
 
 class Block(nn.Module):
     def __init__(self, n_ctx, config, scale=False):
@@ -606,6 +610,7 @@ class Block(nn.Module):
         m = self.mlp(self.ln_2(x))
         x = x + m
         return x, present
+
 
 class GPT2Model(nn.Module):
     def __init__(self, config):
@@ -710,6 +715,7 @@ class GPT2Model(nn.Module):
         output_shape = input_shape + (hidden_states.size(-1),)
         return hidden_states.view(*output_shape), presents
 
+
 class GPT2LMHead(nn.Module):
     def __init__(self, model_embeddings_weights, config):
         super(GPT2LMHead, self).__init__()
@@ -726,6 +732,7 @@ class GPT2LMHead(nn.Module):
         # h_trunc = h[:, :-1].contiguous().view(-1, self.n_embd)
         lm_logits = self.decoder(hidden_state)
         return lm_logits
+
 
 class GPT2Config(object):
     def __init__(
@@ -785,6 +792,7 @@ class GPT2Config(object):
         self.meta_mlp_layer = meta_mlp_layer
         self.meta_inputs = meta_inputs
 
+
 class GPT2LMModel(nn.Module):
     def __init__(self, config):
         super(GPT2LMModel, self).__init__()
@@ -801,20 +809,20 @@ class GPT2LMModel(nn.Module):
                 self.meta_mlp = None
             elif config.meta_mlp_layer == 2:
                 self.meta_mlp = torch.nn.Sequential(
-                                                    torch.nn.Linear(meta_input_dim, config.n_embd),
-                                                    torch.nn.Tanh(),
-                                                    torch.nn.Linear(config.n_embd, config.n_embd),
-                                                    torch.nn.Tanh(),
-                                                   )
+                    torch.nn.Linear(meta_input_dim, config.n_embd),
+                    torch.nn.Tanh(),
+                    torch.nn.Linear(config.n_embd, config.n_embd),
+                    torch.nn.Tanh(),
+                )
             elif config.meta_mlp_layer == 3:
                 self.meta_mlp = torch.nn.Sequential(
-                                                    torch.nn.Linear(meta_input_dim, config.n_embd),
-                                                    torch.nn.Tanh(),
-                                                    torch.nn.Linear(config.n_embd, config.n_embd),
-                                                    torch.nn.Tanh(),
-                                                    torch.nn.Linear(config.n_embd, config.n_embd),
-                                                    torch.nn.Tanh(),
-                                                   )
+                    torch.nn.Linear(meta_input_dim, config.n_embd),
+                    torch.nn.Tanh(),
+                    torch.nn.Linear(config.n_embd, config.n_embd),
+                    torch.nn.Tanh(),
+                    torch.nn.Linear(config.n_embd, config.n_embd),
+                    torch.nn.Tanh(),
+                )
     def set_tied(self):
         """ Make sure we are sharing the embeddings"""
         self.lm_head.set_embeddings_weights(self.transformer.wte.weight)
@@ -942,4 +950,3 @@ class GPT2LMModel(nn.Module):
 
         self.transformer.load_state_dict(state_dict, strict=False)
         self.set_tied()
-        

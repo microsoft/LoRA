@@ -1,19 +1,19 @@
+#  ------------------------------------------------------------------------------------------
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+#  ------------------------------------------------------------------------------------------
 import logging
 import math
 import os
+from collections import OrderedDict 
+import argparse
 
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
 import torch.nn.functional as F
-
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LambdaLR
-
-from collections import OrderedDict 
-import argparse
-
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import LambdaLR, _LRScheduler
 
 
 def add_optimizer_params(parser: argparse.ArgumentParser):
@@ -250,6 +250,7 @@ def get_constant_schedule_with_warmup(optimizer, num_warmup_steps, num_training_
         return 1.0
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
+
 def create_grouped_parameters(model, no_decay_bias): # args):
     if not no_decay_bias:
         optimizer_grouped_parameters = [
@@ -278,11 +279,11 @@ def create_adam_optimizer(model, lr, weight_decay, optimizer_grouped_parameters=
     optimizer = AdamW(optimizer_grouped_parameters, lr=lr, betas=(beta1, beta2), eps=adam_epislon, weight_decay=weight_decay, correct_bias=correct_bias)
     return optimizer
 
+
 def create_sgd_optimizer(model, lr):
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.0)
     return optimizer
     
-#def create_parameter_optimizer(, args):
 
 def create_adam_optimizer_from_args(model, args, grouped_parameters=None):
     if grouped_parameters is None:
@@ -312,4 +313,3 @@ def create_optimizer_scheduler(optimizer, args):
         # constant leanring rate.
         scheduler = None
     return scheduler
-
