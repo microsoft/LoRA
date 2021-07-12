@@ -59,9 +59,9 @@ There are several directories in this repo:
 python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_ft.py \
     --train_data ./data/e2e/train.jsonl \
     --valid_data ./data/e2e/valid.jsonl \
-    --train_batch_size 2 \
+    --train_batch_size 8 \
     --grad_acc 1 \
-    --valid_batch_size 1 \
+    --valid_batch_size 8 \
     --seq_len 512 \
     --model_card gpt2.md \
     --init_checkpoint ./pretrained_checkpoints/gpt2-medium-pytorch_model.bin \
@@ -91,24 +91,24 @@ python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_beam.py \
     --seq_len 512 \
     --eval_len 64 \
     --model_card gpt2.md \
-    --init_checkpoint ./trained_models/GPT2_M/e2e/model.20000.pt \
+    --init_checkpoint ./trained_models/GPT2_M/e2e/model.26000.pt \
     --platform local \
     --lora_dim 4 \
     --lora_alpha 32 \
     --beam 10 \
-    --length_penalty 0.8 \
+    --length_penalty 0.9 \
     --no_repeat_ngram_size 4 \
     --repetition_penalty 1.0 \
     --eos_token_id 628 \
     --work_dir ./trained_models/GPT2_M/e2e \
-    --output_file predict.20000.b10p08.jsonl
+    --output_file predict.26000.b10p09.jsonl
 ```
 
 3. Decode outputs from step (2)
 ```
 python src/gpt2_decode.py \
     --vocab ./vocab \
-    --sample_file ./trained_models/GPT2_M/e2e/predict.20000.b10p08.jsonl \
+    --sample_file ./trained_models/GPT2_M/e2e/predict.26000.b10p09.jsonl \
     --input_file ./data/e2e/test_formatted.jsonl \
     --output_ref_file e2e_ref.txt \
     --output_pred_file e2e_pred.txt
