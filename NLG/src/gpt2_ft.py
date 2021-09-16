@@ -82,10 +82,6 @@ parser.add_argument('--lora_dropout', default=0.0, type=float,
 
 parser.add_argument('--label_smooth', default=0.0, type=float, help='label smoothing')
 
-parser.add_argument('--prefix_len', default=0, type=int, help='prefix length')
-
-parser.add_argument('--infix_len', default=0, type=int, help='infix length')
-
 parser.add_argument('--roll_interval', type=int, default=-1, help='rolling interval')
 
 parser.add_argument('--roll_lr', type=float, default=0.00001, help='rolling learning rate')
@@ -281,12 +277,11 @@ if __name__ == '__main__':
 
     train_data = FT_Dataset(
         args.train_data, args.train_batch_size, args.seq_len, 
-        joint_lm=args.obj=='jlm', prefix_len=args.prefix_len, infix_len=args.infix_len
+        joint_lm=args.obj=='jlm'
     )     
     
     valid_data = FT_Dataset(
-        args.valid_data, args.valid_batch_size, args.seq_len, 
-        prefix_len=args.prefix_len, infix_len=args.infix_len
+        args.valid_data, args.valid_batch_size, args.seq_len,
     )
 
     train_loader = DataLoader(
@@ -307,8 +302,6 @@ if __name__ == '__main__':
             lora_attn_dim=args.lora_dim, 
             lora_attn_alpha=args.lora_alpha, 
             lora_dropout=args.lora_dropout,
-            prefix_len=args.prefix_len, 
-            infix_len=args.infix_len
         )
     elif args.model_card == 'gpt2.md':
         config = GPT2Config(
@@ -316,8 +309,6 @@ if __name__ == '__main__':
             lora_attn_dim=args.lora_dim, 
             lora_attn_alpha=args.lora_alpha, 
             lora_dropout=args.lora_dropout,
-            prefix_len=args.prefix_len, 
-            infix_len=args.infix_len
         )
     elif args.model_card == 'gpt2.lg':
         config = GPT2Config(
@@ -325,8 +316,6 @@ if __name__ == '__main__':
             lora_attn_dim=args.lora_dim, 
             lora_attn_alpha=args.lora_alpha, 
             lora_dropout=args.lora_dropout,
-            prefix_len=args.prefix_len, 
-            infix_len=args.infix_len
         )
 
     lm_net = GPT2LMModel(config)
