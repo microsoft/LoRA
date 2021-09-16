@@ -15,9 +15,10 @@ LoRA also outperforms several other adaptation methods including adapters, prefi
 
 We obtain result comparable or superior to full finetuning on the GLUE benchmark using [RoBERTa (Liu et al., 2019)](https://arxiv.org/abs/1907.11692) base and large and [DeBERTa (He et al., 2020)](https://arxiv.org/abs/2006.03654) XXL 1.5B, while only training and storing a fraction of the parameters. Click the numbers below to download the DeBERTa LoRA checkpoints.
 
-|   | Dataset/Method          | RoBERTa base <br> Fine-tune (125M) |  RoBERTa base <br> LoRA (0.8M) | DeBERTa XXL <br> Fine-tune (1.5B) | DeBERTa XXL <br> LoRA (4.7M)  |
+|   |         | RoBERTa base <br> Fine-tune  |  RoBERTa base <br> LoRA  | DeBERTa XXL <br> Fine-tune | DeBERTa XXL <br> LoRA  |
 |---|-------------------------|----------------|--------------------------|-----------------|-----------------|
-|   | MNLI (m-Acc/mm-Acc)     | <b>87.6</b> | [<b>87.5</b>±.3/<b>86.9</b>±.3](https://github.com/microsoft/LoRA/releases/download/RoBERTa/roberta_base_lora_mnli.bin) |91.7/<b>91.9</b>| [<b>91.9</b>±.1/<b>91.9</b>±.2](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_mnli.bin)       |
+|   | # of Trainable Params.  | 125M | 0.8M | 1.5B | 4.7M     |
+|   | MNLI (m-Acc/mm-Acc)     | <b>87.6</b> | [<b>87.5</b>±.3/86.9±.3](https://github.com/microsoft/LoRA/releases/download/RoBERTa/roberta_base_lora_mnli.bin) |91.7/<b>91.9</b>| [<b>91.9</b>±.1/<b>91.9</b>±.2](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_mnli.bin)       |
 |   | SST2 (Acc)              | 94.8 | [<b>95.1</b>±.2](https://github.com/microsoft/LoRA/releases/download/RoBERTa/roberta_base_lora_sst2.bin) | <b>97.2</b>    | [96.9±.2](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_sst2.bin)                    |
 |   | MRPC (Acc)              | <b>90.2</b> | [<b>89.7</b>±.7](https://github.com/microsoft/LoRA/releases/download/RoBERTa/roberta_base_lora_mrpc.bin) | 92.0           | [<b>92.6</b>±.6](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_mrpc.bin)             |
 |   | CoLA (Matthew's Corr)   | <b>63.6</b> | [<b>63.4</b>±1.2](https://github.com/microsoft/LoRA/releases/download/RoBERTa/roberta_base_lora_cola.bin) | <b>72.0</b>    | [<b>72.4</b>±1.1](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_cola.bin)           |
@@ -25,6 +26,7 @@ We obtain result comparable or superior to full finetuning on the GLUE benchmark
 |   | QQP (Acc)               | <b>91.9</b> | [90.8±.1](https://github.com/microsoft/LoRA/releases/download/RoBERTa/roberta_base_lora_qqp.bin) | 92.7           | [<b>92.9</b>±.1](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_qqp.bin)           |
 |   | RTE (Acc)               | 78.7 | [<b>86.6</b>±.7](https://github.com/microsoft/LoRA/releases/download/RoBERTa/roberta_base_lora_rte.bin) | 93.9           | [<b>94.9</b>±.4](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_rte.bin)           |
 |   | STSB (Pearson/Spearman Corr) | 91.2 | [<b>91.5</b>±.2/<b>91.3</b>±.2](https://github.com/microsoft/LoRA/releases/download/RoBERTa/roberta_base_lora_stsb.bin) |<b>92.9</b>/92.6| [<b>93.0</b>±.2/<b>92.9</b>±.3](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_stsb.bin)      |
+|   | Average  | 86.40 | <b>87.24</b> | 91.06 | <b>91.32</b> |
 
 Fine-tuning numbers taken from [Liu et al. (2019)](https://arxiv.org/abs/1907.11692) and [He et al. (2020)](https://arxiv.org/abs/2006.03654). Please follow the instructions in `NLU/` to reproduce our result.
 
@@ -57,6 +59,7 @@ There are several directories in this repo:
 * [lora/](lora) contains the source code for the package `lora`, which needs to be installed to run the examples we provide;
 * [NLG/](NLG) contains an example implementation of LoRA in GPT-2 using our package, which can be used to reproduce the result in our paper;
 * [NLU/](NLU) contains an example implementation of LoRA in RoBERTa and DeBERTa using our package, which produces competitive results on the GLUE benchmark;
+* See how we use `lora` in [GPT-2](NLG/src/model.py), [RoBERTa](NLU/src/transformers/models/roberta/modeling_roberta.py), [DeBERTa v2](NLU/src/transformers/models/deberta_v2/modeling_deberta_v2.py)
 
 ## Quickstart
 
