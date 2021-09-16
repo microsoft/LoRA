@@ -14,6 +14,7 @@
 
 import json
 import os
+import sys
 import warnings
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -508,6 +509,8 @@ class TrainingArguments:
         default=False, metadata={"help": "Whether or not to skip adding of memory profiler reports to metrics."}
     )
     _n_gpu: int = field(init=False, repr=False, default=-1)
+    cls_dropout: Optional[float] = field(default=None, metadata={"help": "cls drop out."})
+    use_deterministic_algorithms: Optional[bool] = field(default=False, metadata={"help": "Whether or not to use deterministic algorithms."})
 
     def __post_init__(self):
         # expand paths, if not os.makedirs("~/bar") will make directory
@@ -674,7 +677,7 @@ class TrainingArguments:
         else:
             # Here, we'll use torch.distributed.
             # Initializes the distributed backend which will take care of synchronizing nodes/GPUs
-            torch.distributed.init_process_group(backend="nccl")
+            torch.distributed.init_process_group(backend="gloo" if sys.platform == "win32" else "nccl")
             device = torch.device("cuda", self.local_rank)
             self._n_gpu = 1
 

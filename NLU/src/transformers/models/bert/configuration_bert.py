@@ -101,6 +101,12 @@ class BertConfig(PretrainedConfig):
         use_cache (:obj:`bool`, `optional`, defaults to :obj:`True`):
             Whether or not the model should return the last key/values attentions (not used by all models). Only
             relevant if ``config.is_decoder=True``.
+        apply_lora (:obj:`bool`, `optional`):
+            apply Lora.
+        lora_alpha (:obj:`int`, `optional`):
+            lora alpha.
+        lora_r (:obj:`int`, `optional`):
+            lora r.
 
     Examples::
 
@@ -135,6 +141,9 @@ class BertConfig(PretrainedConfig):
         gradient_checkpointing=False,
         position_embedding_type="absolute",
         use_cache=True,
+        apply_lora=False,
+        lora_alpha=None,
+        lora_r=None,
         **kwargs
     ):
         super().__init__(pad_token_id=pad_token_id, **kwargs)
@@ -154,3 +163,6 @@ class BertConfig(PretrainedConfig):
         self.gradient_checkpointing = gradient_checkpointing
         self.position_embedding_type = position_embedding_type
         self.use_cache = use_cache
+        self.apply_lora = apply_lora
+        self.lora_alpha = lora_alpha
+        self.lora_r = lora_r

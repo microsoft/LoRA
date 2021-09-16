@@ -53,12 +53,18 @@ def set_seed(seed: int):
     Args:
         seed (:obj:`int`): The seed to set.
     """
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG']=':16:8'
     random.seed(seed)
     np.random.seed(seed)
     if is_torch_available():
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
+        torch.cuda.manual_seed(seed)
         # ^^ safe to call this function even if cuda is not available
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        # torch.backends.cudnn.enabled = False
     if is_tf_available():
         tf.random.set_seed(seed)
 
