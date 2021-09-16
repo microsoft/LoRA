@@ -240,8 +240,9 @@ def beam(model, data_iter, args):
 
             _query = _query.repeat(1, num_beams).view(batch_size * num_beams, -1)
             _query_len = _query_len.unsqueeze(-1).repeat(1, num_beams).view(-1)
-
-
+            
+            _bbatch = _batch.unsqueeze(-1).repeat(1, num_beams).view(-1)
+            
             # scores for each sentence in the beam
             beam_scores = torch.zeros(
                 (batch_size, num_beams), dtype=torch.float, device=_query.device
@@ -257,7 +258,7 @@ def beam(model, data_iter, args):
                 for i in range(0, args.eval_len):
                     if i == 0:
                         logits, past = model(_query) 
-                        logits = logits[_batch, (_query_len-1).long(), :] # batch_size * beam, vocab
+                        logits = logits[_bbatch, (_query_len-1).long(), :] # batch_size * beam, vocab
                     else:
                         #print('token_id.shape', token_id.shape, token_id)
                         #print('past.shape', past[0].shape)
