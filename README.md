@@ -58,6 +58,8 @@ Download the GPT-2 LoRA checkpoints:
 Please follow the instructions in `NLG/` to reproduce our result.
 ## Repository Overview
 
+<i>(The initial release of this repo has been archived in the branch "snapshot-9-15-2021")</i>
+
 There are several directories in this repo:
 * [loralib/](loralib) contains the source code for the package `loralib`, which needs to be installed to run the examples we provide;
 * [NLG/](NLG) contains an example implementation of LoRA in GPT-2 using our package, which can be used to reproduce the result in our paper;
