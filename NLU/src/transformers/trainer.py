@@ -21,6 +21,7 @@ import gc
 import inspect
 import math
 import os
+import random
 import re
 import shutil
 import sys
@@ -537,6 +538,13 @@ class Trainer:
             raise ValueError("Trainer: training requires a train_dataset.")
         train_sampler = self._get_train_sampler()
 
+        def seed_worker(worker_id):
+            worker_seed = torch.initial_seed() % 2**32
+            np.random.seed(worker_seed)
+            random.seed(worker_seed)
+
+        g = torch.Generator()
+        g.manual_seed(self.args.seed)
         return DataLoader(
             self.train_dataset,
             batch_size=self.args.train_batch_size,
@@ -545,6 +553,8 @@ class Trainer:
             drop_last=self.args.dataloader_drop_last,
             num_workers=self.args.dataloader_num_workers,
             pin_memory=self.args.dataloader_pin_memory,
+            worker_init_fn=seed_worker,
+            generator=g
         )
 
     def _get_eval_sampler(self, eval_dataset: Dataset) -> Optional[torch.utils.data.sampler.Sampler]:
@@ -612,6 +622,53 @@ class Trainer:
             pin_memory=self.args.dataloader_pin_memory,
         )
 
+    def create_optimizer(self) -> torch.optim.Optimizer:
+        decay_parameters = get_parameter_names(self.model, [torch.nn.LayerNorm])
+        decay_parameters = [name for name in decay_parameters if "bias" not in name]
+        optimizer_grouped_parameters = [
+            {
+                "params": [p for n, p in self.model.named_parameters() if n in decay_parameters],
+                "weight_decay": self.args.weight_decay,
+            },
+            {
+                "params": [p for n, p in self.model.named_parameters() if n not in decay_parameters],
+                "weight_decay": 0.0,
+            },
+        ]
+        optimizer_cls = Adafactor if self.args.adafactor else AdamW
+        if self.args.adafactor:
+            optimizer_cls = Adafactor
+            optimizer_kwargs = {"scale_parameter": False, "relative_step": False}
+        else:
+            optimizer_cls = AdamW
+            optimizer_kwargs = {
+                "betas": (self.args.adam_beta1, self.args.adam_beta2),
+                "eps": self.args.adam_epsilon,
+            }
+        optimizer_kwargs["lr"] = self.args.learning_rate
+        if self.sharded_ddp == ShardedDDPOption.SIMPLE:
+            return OSS(
+                params=optimizer_grouped_parameters,
+                optim=optimizer_cls,
+                **optimizer_kwargs,
+            )
+
+        return optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)
+
+    def create_scheduler(self, optimizer: torch.optim.Optimizer, num_training_steps: int) -> torch.optim.lr_scheduler.LambdaLR:
+        warmup_steps = (
+            self.args.warmup_steps
+            if self.args.warmup_steps > 0
+            else math.ceil(num_training_steps * self.args.warmup_ratio)
+        )
+
+        return get_scheduler(
+            self.args.lr_scheduler_type,
+            optimizer,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=num_training_steps,
+        )
+
     def create_optimizer_and_scheduler(self, num_training_steps: int):
         """
         Setup the optimizer and the learning rate scheduler.
@@ -620,50 +677,12 @@ class Trainer:
         Trainer's init through :obj:`optimizers`, or subclass and override this method in a subclass.
         """
         if self.optimizer is None:
-            decay_parameters = get_parameter_names(self.model, [torch.nn.LayerNorm])
-            decay_parameters = [name for name in decay_parameters if "bias" not in name]
-            optimizer_grouped_parameters = [
-                {
-                    "params": [p for n, p in self.model.named_parameters() if n in decay_parameters],
-                    "weight_decay": self.args.weight_decay,
-                },
-                {
-                    "params": [p for n, p in self.model.named_parameters() if n not in decay_parameters],
-                    "weight_decay": 0.0,
-                },
-            ]
-            optimizer_cls = Adafactor if self.args.adafactor else AdamW
-            if self.args.adafactor:
-                optimizer_cls = Adafactor
-                optimizer_kwargs = {"scale_parameter": False, "relative_step": False}
-            else:
-                optimizer_cls = AdamW
-                optimizer_kwargs = {
-                    "betas": (self.args.adam_beta1, self.args.adam_beta2),
-                    "eps": self.args.adam_epsilon,
-                }
-            optimizer_kwargs["lr"] = self.args.learning_rate
-            if self.sharded_ddp == ShardedDDPOption.SIMPLE:
-                self.optimizer = OSS(
-                    params=optimizer_grouped_parameters,
-                    optim=optimizer_cls,
-                    **optimizer_kwargs,
-                )
-            else:
-                self.optimizer = optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)
+            self.optimizer = self.create_optimizer()
 
         if self.lr_scheduler is None:
-            warmup_steps = (
-                self.args.warmup_steps
-                if self.args.warmup_steps > 0
-                else math.ceil(num_training_steps * self.args.warmup_ratio)
-            )
-
-            self.lr_scheduler = get_scheduler(
-                self.args.lr_scheduler_type,
-                self.optimizer,
-                num_warmup_steps=warmup_steps,
-                num_training_steps=num_training_steps,
+            self.lr_scheduler = self.create_scheduler(
+                optimizer=self.optimizer,
+                num_training_steps=num_training_steps
             )
 
     def num_examples(self, dataloader: DataLoader) -> int:
@@ -858,12 +877,9 @@ class Trainer:
 
         if resume_from_checkpoint is not None and os.path.isfile(os.path.join(resume_from_checkpoint, WEIGHTS_NAME)):
             logger.info(f"Loading model from {resume_from_checkpoint}).")
-            if isinstance(self.model, PreTrainedModel):
-                self.model = self.model.from_pretrained(resume_from_checkpoint)
-                model_reloaded = True
-            else:
-                state_dict = torch.load(os.path.join(resume_from_checkpoint, WEIGHTS_NAME))
-                self.model.load_state_dict(state_dict)
+            state_dict = torch.load(os.path.join(resume_from_checkpoint, WEIGHTS_NAME), map_location="cpu")
+            self._load_state_dict_in_model(state_dict)
+            del state_dict
 
         # If model was re-initialized, put it on the right device and update self.model_wrapped
         if model_reloaded:
@@ -908,7 +924,6 @@ class Trainer:
             self.lr_scheduler = lr_scheduler
         elif not delay_optimizer_creation:
             self.create_optimizer_and_scheduler(num_training_steps=max_steps)
-
         self.state = TrainerState()
         self.state.is_hyper_param_search = trial is not None
 
@@ -1081,6 +1096,7 @@ class Trainer:
                             torch.nn.utils.clip_grad_norm_(
                                 amp.master_params(self.optimizer) if self.use_apex else model.parameters(),
                                 self.args.max_grad_norm,
+                                error_if_nonfinite=False
                             )
 
                     # Optimizer step
@@ -1963,3 +1979,14 @@ class Trainer:
             return self.model.floating_point_ops(inputs)
         else:
             return 0
+
+    def _load_state_dict_in_model(self, state_dict):
+        load_result = self.model.load_state_dict(state_dict, strict=False)
+
+        if len(load_result.missing_keys) != 0:
+            if set(load_result.missing_keys) == set(self.model._keys_to_ignore_on_save):
+                self.model.tie_weights()
+            else:
+                logger.warn(f"There were missing keys in the checkpoint model loaded: {load_result.missing_keys}.")
+        if len(load_result.unexpected_keys) != 0:
+            logger.warn(f"There were unexpected keys in the checkpoint model loaded: {load_result.unexpected_keys}.")

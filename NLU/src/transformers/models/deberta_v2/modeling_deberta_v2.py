@@ -14,11 +14,13 @@
 # limitations under the License.
 """ PyTorch DeBERTa-v2 model. """
 
+import loralib as lora
 import math
 from collections.abc import Sequence
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch import _softmax_backward_data, nn
 from torch.nn import CrossEntropyLoss, LayerNorm
 
@@ -568,9 +570,17 @@ class DisentangledSelfAttention(torch.nn.Module):
         _attention_head_size = config.hidden_size // config.num_attention_heads
         self.attention_head_size = getattr(config, "attention_head_size", _attention_head_size)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
-        self.query_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
+        if config.apply_lora:
+            self.query_proj = lora.Linear(config.hidden_size, self.all_head_size, r=config.lora_r, lora_alpha=config.lora_alpha, merge_weights=False)
+        else:
+            self.query_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
+
         self.key_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
-        self.value_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
+
+        if config.apply_lora:
+            self.value_proj = lora.Linear(config.hidden_size, self.all_head_size, r=config.lora_r, lora_alpha=config.lora_alpha, merge_weights=False)
+        else:
+            self.value_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
 
         self.share_att_key = getattr(config, "share_att_key", False)
         self.pos_att_type = config.pos_att_type if config.pos_att_type is not None else []
@@ -640,9 +650,12 @@ class DisentangledSelfAttention(torch.nn.Module):
         """
         if query_states is None:
             query_states = hidden_states
-        query_layer = self.transpose_for_scores(self.query_proj(query_states), self.num_attention_heads)
-        key_layer = self.transpose_for_scores(self.key_proj(hidden_states), self.num_attention_heads)
-        value_layer = self.transpose_for_scores(self.value_proj(hidden_states), self.num_attention_heads)
+        q = self.query_proj(query_states)
+        k = self.key_proj(hidden_states)
+        v = self.value_proj(hidden_states)
+        query_layer = self.transpose_for_scores(q, self.num_attention_heads)
+        key_layer = self.transpose_for_scores(k, self.num_attention_heads)
+        value_layer = self.transpose_for_scores(v, self.num_attention_heads)
 
         rel_att = None
         # Take the dot product between "query" and "key" to get the raw attention scores.
@@ -686,6 +699,13 @@ class DisentangledSelfAttention(torch.nn.Module):
         else:
             return context_layer
 
+    def manually_gather(self, input, index):
+        assert input.dim() == 3
+        assert index.dim() == 2
+        assert input.size(1) == index.size(0)
+        index = index + torch.arange(start=0, end=index.size(0)*input.shape[-1], step=input.shape[-1], device=index.device).view(-1, 1)
+        return torch.index_select(input.view(input.shape[0], -1), dim=-1, index=index.view(-1)).view(input.shape[0], index.shape[0], index.shape[1])
+
     def disentangled_attention_bias(self, query_layer, key_layer, relative_pos, rel_embeddings, scale_factor):
         if relative_pos is None:
             q = query_layer.size(-2)
@@ -706,7 +726,7 @@ class DisentangledSelfAttention(torch.nn.Module):
         rel_embeddings = rel_embeddings[self.pos_ebd_size - att_span : self.pos_ebd_size + att_span, :].unsqueeze(0)
         if self.share_att_key:
             pos_query_layer = self.transpose_for_scores(
-                self.query_proj(rel_embeddings), self.num_attention_heads
+                nn.Linear.forward(self.query_proj, rel_embeddings), self.num_attention_heads
             ).repeat(query_layer.size(0) // self.num_attention_heads, 1, 1)
             pos_key_layer = self.transpose_for_scores(self.key_proj(rel_embeddings), self.num_attention_heads).repeat(
                 query_layer.size(0) // self.num_attention_heads, 1, 1
@@ -731,10 +751,9 @@ class DisentangledSelfAttention(torch.nn.Module):
             scale = math.sqrt(pos_key_layer.size(-1) * scale_factor)
             c2p_att = torch.bmm(query_layer, pos_key_layer.transpose(-1, -2))
             c2p_pos = torch.clamp(relative_pos + att_span, 0, att_span * 2 - 1)
-            c2p_att = torch.gather(
+            c2p_att = self.manually_gather(
                 c2p_att,
-                dim=-1,
-                index=c2p_pos.squeeze(0).expand([query_layer.size(0), query_layer.size(1), relative_pos.size(-1)]),
+                c2p_pos.squeeze(0).squeeze(0)
             )
             score += c2p_att / scale
 
@@ -758,10 +777,9 @@ class DisentangledSelfAttention(torch.nn.Module):
 
         if "p2c" in self.pos_att_type:
             p2c_att = torch.bmm(key_layer, pos_query_layer.transpose(-1, -2))
-            p2c_att = torch.gather(
+            p2c_att = self.manually_gather(
                 p2c_att,
-                dim=-1,
-                index=p2c_pos.squeeze(0).expand([query_layer.size(0), key_layer.size(-2), key_layer.size(-2)]),
+                p2c_pos.squeeze(0).squeeze(0)
             ).transpose(-1, -2)
             if query_layer.size(-2) != key_layer.size(-2):
                 p2c_att = torch.gather(
@@ -897,6 +915,14 @@ class DebertaV2PreTrainedModel(PreTrainedModel):
             module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
+        elif isinstance(module, DisentangledSelfAttention):
+            module.query_proj.reset_parameters()
+            module.value_proj.reset_parameters()
+            if hasattr(module.query_proj, 'lora_A'):
+                module.query_proj.lora_A.data.normal_(mean=0.0, std=self.config.initializer_range)
+            if hasattr(module.value_proj, 'lora_A'):
+                module.value_proj.lora_A.data.normal_(mean=0.0, std=self.config.initializer_range)
+
 
     def _pre_load_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
         """
@@ -1225,6 +1251,254 @@ class DebertaV2OnlyMLMHead(nn.Module):
         return prediction_scores
 
 
+# Copied from transformers.models.deberta.modeling_deberta.DebertaForSequenceClassification with Deberta->DebertaV2
+class DebertaV2ForCutoffSequenceClassification(DebertaV2PreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+
+        num_labels = getattr(config, "num_labels", 2)
+        self.num_labels = num_labels
+        reg_loss_wgt = getattr(config, "reg_loss_wgt", 0.0)
+        self.reg_loss_wgt = reg_loss_wgt
+        masking_prob = getattr(config, "masking_prob", 0.0)
+        self.masking_prob = masking_prob
+        cls_token_id = getattr(config, "cls_token_id", 1)
+        sep_token_id = getattr(config, "sep_token_id", 2)
+        unk_token_id = getattr(config, "unk_token_id", 3)
+        self.cls_token_id = cls_token_id
+        self.sep_token_id = sep_token_id
+        self.unk_token_id = unk_token_id
+
+        self.deberta = DebertaV2Model(config)
+        self.pooler = ContextPooler(config)
+        output_dim = self.pooler.output_dim
+
+        self.classifier = torch.nn.Linear(output_dim, num_labels)
+        drop_out = getattr(config, "cls_dropout", None)
+        drop_out = self.config.hidden_dropout_prob if drop_out is None else drop_out
+        self.dropout = StableDropout(drop_out)
+
+        self.init_weights()
+
+    def get_input_embeddings(self):
+        return self.deberta.get_input_embeddings()
+
+    def set_input_embeddings(self, new_embeddings):
+        self.deberta.set_input_embeddings(new_embeddings)
+
+    @add_start_docstrings_to_model_forward(DEBERTA_INPUTS_DOCSTRING.format("batch_size, sequence_length"))
+    @add_code_sample_docstrings(
+        tokenizer_class=_TOKENIZER_FOR_DOC,
+        checkpoint=_CHECKPOINT_FOR_DOC,
+        output_type=SequenceClassifierOutput,
+        config_class=_CONFIG_FOR_DOC,
+    )
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        r"""
+        labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`):
+            Labels for computing the sequence classification/regression loss. Indices should be in :obj:`[0, ...,
+            config.num_labels - 1]`. If :obj:`config.num_labels == 1` a regression loss is computed (Mean-Square loss),
+            If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
+        """
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        masked_inputs = input_ids.clone()
+        if self.masking_prob > 0:
+            random_indices = torch.bernoulli(torch.full(input_ids.shape, self.masking_prob, device=input_ids.device)).bool()
+            masking_indces = (input_ids != self.cls_token_id) & (input_ids != self.sep_token_id) & random_indices & attention_mask.bool()
+            masked_inputs[masking_indces] = self.unk_token_id
+            
+        p1_outputs = self.deberta(
+            input_ids,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        
+        p2_outputs = self.deberta(
+            masked_inputs,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        p1_logits = self.classifier(self.dropout(self.pooler(p1_outputs[0])))
+        p2_logits = self.classifier(self.dropout(self.pooler(p2_outputs[0])))
+        m_logits = (p1_logits + p2_logits) / 2.0
+
+        loss = None
+        if labels is not None:
+            if labels.dim() == 1 or labels.size(-1) == 1:
+                label_index = (labels >= 0).nonzero()
+                labels = labels.long()
+                if label_index.size(0) > 0:
+                    p1_logits = torch.index_select(p1_logits, 0, label_index.view(-1))
+                    p2_logits = torch.index_select(p2_logits, 0, label_index.view(-1))
+                    m_logits = torch.index_select(m_logits, 0, label_index.view(-1))
+                    labels = torch.index_select(labels, 0, label_index.view(-1))
+                    loss_fct = CrossEntropyLoss()
+                    p1_loss = loss_fct(p1_logits.view(-1, self.num_labels).float(), labels.view(-1))
+                    p2_loss = loss_fct(p2_logits.view(-1, self.num_labels).float(), labels.view(-1))
+                    p1_m_loss = F.kl_div(F.log_softmax(p1_logits, dim=-1), F.softmax(m_logits, dim=-1), reduction='mean')
+                    p2_m_loss = F.kl_div(F.log_softmax(p2_logits, dim=-1), F.softmax(m_logits, dim=-1), reduction='mean')
+                else:
+                    p1_loss = torch.tensor(0).to(p1_logits)
+                    p2_loss = torch.tensor(0).to(p2_logits)
+                    p1_m_loss = torch.tensor(0).to(p1_logits)
+                    p2_m_loss = torch.tensor(0).to(p2_logits)
+            else:
+                log_softmax = torch.nn.LogSoftmax(-1)
+                p1_loss = -((log_softmax(p1_logits) * labels).sum(-1)).mean()
+                p2_loss = -((log_softmax(p2_logits) * labels).sum(-1)).mean()
+                p1_m_loss = F.kl_div(F.log_softmax(p1_logits, dim=-1), F.softmax(m_logits, dim=-1), reduction='mean')
+                p2_m_loss = F.kl_div(F.log_softmax(p2_logits, dim=-1), F.softmax(m_logits, dim=-1), reduction='mean')
+            loss = p1_loss + p2_loss + 0.5 * self.reg_loss_wgt * (p1_m_loss + p2_m_loss)
+        if not return_dict:
+            return (loss,)
+        else:
+            return SequenceClassifierOutput(
+                loss=loss,
+                logits=None,
+                hidden_states=None,
+                attentions=None,
+            )
+
+
+# Copied from transformers.models.deberta.modeling_deberta.DebertaForSequenceClassification with Deberta->DebertaV2
+class DebertaV2ForRDropSequenceClassification(DebertaV2PreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+
+        num_labels = getattr(config, "num_labels", 2)
+        self.num_labels = num_labels
+        reg_loss_wgt = getattr(config, "reg_loss_wgt", 0.0)
+        self.reg_loss_wgt = reg_loss_wgt
+
+        self.deberta = DebertaV2Model(config)
+        self.pooler = ContextPooler(config)
+        output_dim = self.pooler.output_dim
+
+        self.classifier = torch.nn.Linear(output_dim, num_labels)
+        drop_out = getattr(config, "cls_dropout", None)
+        drop_out = self.config.hidden_dropout_prob if drop_out is None else drop_out
+        self.dropout = StableDropout(drop_out)
+
+        self.init_weights()
+
+    def get_input_embeddings(self):
+        return self.deberta.get_input_embeddings()
+
+    def set_input_embeddings(self, new_embeddings):
+        self.deberta.set_input_embeddings(new_embeddings)
+
+    @add_start_docstrings_to_model_forward(DEBERTA_INPUTS_DOCSTRING.format("batch_size, sequence_length"))
+    @add_code_sample_docstrings(
+        tokenizer_class=_TOKENIZER_FOR_DOC,
+        checkpoint=_CHECKPOINT_FOR_DOC,
+        output_type=SequenceClassifierOutput,
+        config_class=_CONFIG_FOR_DOC,
+    )
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        r"""
+        labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`):
+            Labels for computing the sequence classification/regression loss. Indices should be in :obj:`[0, ...,
+            config.num_labels - 1]`. If :obj:`config.num_labels == 1` a regression loss is computed (Mean-Square loss),
+            If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
+        """
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        p1_outputs = self.deberta(
+            input_ids,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        
+        p2_outputs = self.deberta(
+            input_ids,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        p1_logits = self.classifier(self.dropout(self.pooler(p1_outputs[0])))
+        p2_logits = self.classifier(self.dropout(self.pooler(p2_outputs[0])))
+
+        loss = None
+        if labels is not None:
+            if labels.dim() == 1 or labels.size(-1) == 1:
+                label_index = (labels >= 0).nonzero()
+                labels = labels.long()
+                if label_index.size(0) > 0:
+                    p1_logits = torch.index_select(p1_logits, 0, label_index.view(-1))
+                    p2_logits = torch.index_select(p2_logits, 0, label_index.view(-1))
+                    labels = torch.index_select(labels, 0, label_index.view(-1))
+                    loss_fct = CrossEntropyLoss()
+                    p1_loss = loss_fct(p1_logits.view(-1, self.num_labels).float(), labels.view(-1))
+                    p2_loss = loss_fct(p2_logits.view(-1, self.num_labels).float(), labels.view(-1))
+                    p12_loss = F.kl_div(F.log_softmax(p1_logits, dim=-1), F.softmax(p2_logits, dim=-1), reduction='mean')
+                    p21_loss = F.kl_div(F.log_softmax(p2_logits, dim=-1), F.softmax(p1_logits, dim=-1), reduction='mean')
+                else:
+                    p1_loss = torch.tensor(0).to(p1_logits)
+                    p2_loss = torch.tensor(0).to(p2_logits)
+                    p12_loss = torch.tensor(0).to(p1_logits)
+                    p21_loss = torch.tensor(0).to(p2_logits)
+            else:
+                log_softmax = torch.nn.LogSoftmax(-1)
+                p1_loss = -((log_softmax(p1_logits) * labels).sum(-1)).mean()
+                p2_loss = -((log_softmax(p2_logits) * labels).sum(-1)).mean()
+                p12_loss = F.kl_div(F.log_softmax(p1_logits, dim=-1), F.softmax(p2_logits, dim=-1), reduction='mean')
+                p21_loss = F.kl_div(F.log_softmax(p2_logits, dim=-1), F.softmax(p1_logits, dim=-1), reduction='mean')
+            loss = p1_loss + p2_loss + 0.5 * self.reg_loss_wgt * (p12_loss + p21_loss)
+        if not return_dict:
+            return (loss,)
+        else:
+            return SequenceClassifierOutput(
+                loss=loss,
+                logits=None,
+                hidden_states=None,
+                attentions=None,
+            )
+
+
 @add_start_docstrings(
     """
     DeBERTa Model transformer with a sequence classification/regression head on top (a linear layer on top of the
@@ -1239,6 +1513,16 @@ class DebertaV2ForSequenceClassification(DebertaV2PreTrainedModel):
 
         num_labels = getattr(config, "num_labels", 2)
         self.num_labels = num_labels
+        reg_loss_wgt = getattr(config, "reg_loss_wgt", 0.0)
+        self.reg_loss_wgt = reg_loss_wgt
+        masking_prob = getattr(config, "masking_prob", 0.0)
+        self.masking_prob = masking_prob
+        cls_token_id = getattr(config, "cls_token_id", 1)
+        sep_token_id = getattr(config, "sep_token_id", 2)
+        unk_token_id = getattr(config, "unk_token_id", 3)
+        self.cls_token_id = cls_token_id
+        self.sep_token_id = sep_token_id
+        self.unk_token_id = unk_token_id
 
         self.deberta = DebertaV2Model(config)
         self.pooler = ContextPooler(config)
@@ -1300,8 +1584,29 @@ class DebertaV2ForSequenceClassification(DebertaV2PreTrainedModel):
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
 
+        if self.reg_loss_wgt > 0:
+            masked_inputs = input_ids.clone()
+            if self.masking_prob > 0:
+                random_indices = torch.bernoulli(torch.full(input_ids.shape, self.masking_prob, device=input_ids.device)).bool()
+                masking_indces = (input_ids != self.cls_token_id) & (input_ids != self.sep_token_id) & random_indices & attention_mask.bool()
+                masked_inputs[masking_indces] = self.unk_token_id
+            
+            outputs_2 = self.deberta(
+                masked_inputs,
+                token_type_ids=token_type_ids,
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+                inputs_embeds=inputs_embeds,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                return_dict=return_dict,
+            )
+
+            logits_2 = self.classifier(self.dropout(self.pooler(outputs_2[0])))
+            logits_m = (logits + logits_2) / 2.0
+
         loss = None
-        if labels is not None:
+        if labels is not None and self.reg_loss_wgt == 0:
             if self.num_labels == 1:
                 # regression task
                 loss_fn = torch.nn.MSELoss()
@@ -1311,8 +1616,8 @@ class DebertaV2ForSequenceClassification(DebertaV2PreTrainedModel):
                 label_index = (labels >= 0).nonzero()
                 labels = labels.long()
                 if label_index.size(0) > 0:
-                    labeled_logits = torch.gather(logits, 0, label_index.expand(label_index.size(0), logits.size(1)))
-                    labels = torch.gather(labels, 0, label_index.view(-1))
+                    labeled_logits = torch.index_select(logits, 0, label_index.view(-1))
+                    labels = torch.index_select(labels, 0, label_index.view(-1))
                     loss_fct = CrossEntropyLoss()
                     loss = loss_fct(labeled_logits.view(-1, self.num_labels).float(), labels.view(-1))
                 else:
@@ -1320,6 +1625,33 @@ class DebertaV2ForSequenceClassification(DebertaV2PreTrainedModel):
             else:
                 log_softmax = torch.nn.LogSoftmax(-1)
                 loss = -((log_softmax(logits) * labels).sum(-1)).mean()
+        elif labels is not None and self.reg_loss_wgt > 0:
+            if labels.dim() == 1 or labels.size(-1) == 1:
+                label_index = (labels >= 0).nonzero()
+                labels = labels.long()
+                if label_index.size(0) > 0:
+                    logits_1 = torch.index_select(logits, 0, label_index.view(-1))
+                    logits_2 = torch.index_select(logits_2, 0, label_index.view(-1))
+                    logits_m = torch.index_select(logits_m, 0, label_index.view(-1))
+                    labels = torch.index_select(labels, 0, label_index.view(-1))
+                    loss_fct = CrossEntropyLoss()
+                    loss_1 = loss_fct(logits_1.view(-1, self.num_labels).float(), labels.view(-1))
+                    loss_2 = loss_fct(logits_2.view(-1, self.num_labels).float(), labels.view(-1))
+                    kl_loss_1 = F.kl_div(F.log_softmax(logits_1, dim=-1), F.softmax(logits_m, dim=-1), reduction='mean')
+                    kl_loss_2 = F.kl_div(F.log_softmax(logits_2, dim=-1), F.softmax(logits_m, dim=-1), reduction='mean')
+                else:
+                    loss_1 = torch.tensor(0).to(logits)
+                    loss_2 = torch.tensor(0).to(logits_2)
+                    kl_loss_1 = torch.tensor(0).to(logits)
+                    kl_loss_2 = torch.tensor(0).to(logits_2)
+            else:
+                log_softmax = torch.nn.LogSoftmax(-1)
+                loss_1 = -((log_softmax(logits) * labels).sum(-1)).mean()
+                loss_2 = -((log_softmax(logits_2) * labels).sum(-1)).mean()
+                kl_loss_1 = F.kl_div(F.log_softmax(logits, dim=-1), F.softmax(logits_m, dim=-1), reduction='mean')
+                kl_loss_2 = F.kl_div(F.log_softmax(logits_2, dim=-1), F.softmax(logits_m, dim=-1), reduction='mean')
+            loss = loss_1 + loss_2 + 0.5 * self.reg_loss_wgt * (kl_loss_1 + kl_loss_2)
+        
         if not return_dict:
             output = (logits,) + outputs[1:]
             return ((loss,) + output) if loss is not None else output

@@ -287,7 +287,7 @@ def init_deepspeed(trainer, num_training_steps):
     args = trainer.args
     ds_config_file = args.deepspeed
     model = trainer.model
-
+    optimizer, lr_scheduler = None, None
     with io.open(ds_config_file, "r", encoding="utf-8") as f:
         config = json.load(f)
 
@@ -325,61 +325,19 @@ def init_deepspeed(trainer, num_training_steps):
         logger.info(
             f"Keeping the `optimizer` config from {ds_config_file} intact, ignoring any optimizer-specific cl args"
         )
-    else:  # override only if the ds config doesn't already have this section
-        # ds supports Adam, AdamW, OneBitAdam, and Lamb optimizers and can import other optimizers from torch.
-        # To use other optimizers requires voiding warranty with: `"zero_allow_untested_optimizer": true"`
+    else:  # user wants optimizer from cl args, so create and pass to DS
+        optimizer = trainer.create_optimizer()
 
-        optimizer_configs = {
-            "AdamW": {
-                "lr": args.learning_rate,
-                "betas": [args.adam_beta1, args.adam_beta2],
-                "eps": args.adam_epsilon,
-                "weight_decay": args.weight_decay,
-            }
-        }
-        optimizer = "AdamW"
-
-        config["optimizer"] = {
-            "type": optimizer,
-            "params": optimizer_configs[optimizer],
-        }
-
-    # DS schedulers (deepspeed/runtime/lr_schedules.py):
-    #
-    # DS name      | --lr_scheduler_type  | HF func                           | Notes
-    # -------------| ---------------------|-----------------------------------|--------------------
-    # LRRangeTest  | na                   | na                                | LRRT
-    # OneCycle     | na                   | na                                | 1CLR
-    # WarmupLR     | constant_with_warmup | get_constant_schedule_with_warmup | w/ warmup_min_lr=0
-    # WarmupDecayLR| linear               | get_linear_schedule_with_warmup   |
     if "scheduler" in config:
         logger.info(
             f"Keeping the `scheduler` config from {ds_config_file} intact, ignoring any scheduler-specific cl args"
         )
-    else:  # override only if the ds config doesn't already have this section
-        if args.lr_scheduler_type == SchedulerType.LINEAR:
-            scheduler = "WarmupDecayLR"
-            params = {
-                "last_batch_iteration": -1,
-                "total_num_steps": num_training_steps,
-                "warmup_min_lr": 0,
-                "warmup_max_lr": args.learning_rate,
-                "warmup_num_steps": args.warmup_steps,
-            }
-        elif args.lr_scheduler_type == SchedulerType.CONSTANT_WITH_WARMUP:
-            scheduler = "WarmupLR"
-            params = {
-                "warmup_min_lr": 0,
-                "warmup_max_lr": args.learning_rate,
-                "warmup_num_steps": args.warmup_steps,
-            }
-        else:
-            raise ValueError(f"{args.lr_scheduler_type} scheduler type is not supported by DeepSpeed")
-
-        config["scheduler"] = {
-            "type": scheduler,
-            "params": params,
-        }
+    else:  # user wants to LR scheduler from cl args, so create it if optimizer already avaialble.
+        if optimizer is not None:
+            lr_scheduler = trainer.create_scheduler(
+                optimizer=optimizer,
+                num_training_steps=num_training_steps
+            )
 
     # fp16
     if trainer.fp16_backend is not None:
@@ -415,8 +373,15 @@ def init_deepspeed(trainer, num_training_steps):
         args=SimpleNamespace(**ds_args),  # expects an obj
         model=model,
         model_parameters=model_parameters,
+        optimizer=optimizer,
+        lr_scheduler=lr_scheduler,
         config_params=config,
     )
+    if lr_scheduler is None:
+        lr_scheduler = trainer.create_scheduler(
+            optimizer=optimizer,
+            num_training_steps=num_training_steps
+        )
 
     return model, optimizer, lr_scheduler
 

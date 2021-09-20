@@ -15,6 +15,8 @@
 # limitations under the License.
 """PyTorch RoBERTa model. """
 
+import loralib as lora
+
 import math
 
 import torch
@@ -157,9 +159,17 @@ class RobertaSelfAttention(nn.Module):
         self.attention_head_size = int(config.hidden_size / config.num_attention_heads)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
 
-        self.query = nn.Linear(config.hidden_size, self.all_head_size)
+        if config.apply_lora:
+            self.query = lora.Linear(config.hidden_size, self.all_head_size, config.lora_r, lora_alpha=config.lora_alpha)
+        else:
+            self.query = nn.Linear(config.hidden_size, self.all_head_size)
+        
         self.key = nn.Linear(config.hidden_size, self.all_head_size)
-        self.value = nn.Linear(config.hidden_size, self.all_head_size)
+
+        if config.apply_lora:
+            self.value = lora.Linear(config.hidden_size, self.all_head_size, config.lora_r, lora_alpha=config.lora_alpha)
+        else:
+            self.value = nn.Linear(config.hidden_size, self.all_head_size)
 
         self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
         self.position_embedding_type = getattr(config, "position_embedding_type", "absolute")
@@ -572,6 +582,10 @@ class RobertaPreTrainedModel(PreTrainedModel):
     config_class = RobertaConfig
     base_model_prefix = "roberta"
 
+    def __init__(self, config):
+        super().__init__(config)
+        self._register_load_state_dict_pre_hook(self._pre_load_hook)
+
     # Copied from transformers.models.bert.modeling_bert.BertPreTrainedModel._init_weights
     def _init_weights(self, module):
         """ Initialize the weights """
@@ -588,6 +602,32 @@ class RobertaPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
+        elif isinstance(module, RobertaSelfAttention):
+            module.query.reset_parameters()
+            module.value.reset_parameters()
+
+    def _pre_load_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+        """
+        Removes the classifier if it doesn't have the correct number of labels.
+        """
+        self_state = self.state_dict()
+        if (
+            ("classifier.out_proj.weight" in self_state)
+            and ("classifier.out_proj.weight" in state_dict)
+            and self_state["classifier.out_proj.weight"].size() != state_dict["classifier.out_proj.weight"].size()
+        ):
+            logger.warning(
+                f"The checkpoint classifier head has a shape {state_dict['classifier.out_proj.weight'].size()} and this model "
+                f"classifier head has a shape {self_state['classifier.out_proj.weight'].size()}. Ignoring the checkpoint "
+                f"weights. You should train your model on new data."
+            )
+            del state_dict["classifier.out_proj.weight"]
+            if "classifier.out_proj.bias" in state_dict:
+                del state_dict["classifier.out_proj.bias"]
+            if "classifier.dense.weight" in state_dict:
+                del state_dict["classifier.dense.weight"]
+            if "classifier.dense.bias" in state_dict:
+                del state_dict["classifier.dense.bias"]
 
 
 ROBERTA_START_DOCSTRING = r"""

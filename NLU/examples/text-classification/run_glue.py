@@ -20,6 +20,7 @@ import logging
 import os
 import random
 import sys
+import torch
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -172,8 +173,32 @@ class ModelArguments:
             "with private models)."
         },
     )
+    apply_lora: Optional[bool] = field(
+        default=False,
+        metadata={"help": "Whether to apply LoRA or not."},
+    )
+    lora_alpha: Optional[int] = field(
+        default=None,
+        metadata={"help": "LoRA alpha"},
+    )
+    lora_r: Optional[int] = field(
+        default=None,
+        metadata={"help": "LoRA r"},
+    )
+    lora_path: Optional[str] = field(
+        default=None,
+        metadata={"help": "The file path of LoRA parameters."},
+    )
+    reg_loss_wgt: Optional[float] = field(
+        default=0.0,
+        metadata={"help": "Regularization Loss Weight"},
+    )
+    masking_prob: Optional[float] = field(
+        default=0.0,
+        metadata={"help": "Token Masking Probability"},
+    )
 
-
+    
 def main():
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
@@ -186,6 +211,9 @@ def main():
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
+    torch.use_deterministic_algorithms(training_args.use_deterministic_algorithms)
+    logger.info("use_deterministic_algorithms: " + str(torch.are_deterministic_algorithms_enabled()))
 
     # Detecting last checkpoint.
     last_checkpoint = None
@@ -301,6 +329,12 @@ def main():
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
+        cls_dropout=training_args.cls_dropout,
+        apply_lora=model_args.apply_lora,
+        lora_alpha=model_args.lora_alpha,
+        lora_r=model_args.lora_r,
+        reg_loss_wgt=model_args.reg_loss_wgt,
+        masking_prob=model_args.masking_prob,
     )
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
@@ -317,6 +351,15 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
+
+    if model_args.apply_lora:
+        if model_args.lora_path is not None:
+            lora_state_dict = torch.load(model_args.lora_path)
+            logger.info(f"Apply LoRA state dict from {model_args.lora_path}.")
+            logger.info(lora_state_dict.keys())
+            model.load_state_dict(lora_state_dict, strict=False)
+        for name, param in model.named_parameters():
+            param.requires_grad = not ('lora' not in name and (name.startswith('deberta') or name.startswith('roberta')))
 
     # Preprocessing the datasets
     if data_args.task_name is not None:

@@ -1,0 +1,25 @@
+{
+  "fp16": {
+
+    "enabled": true,
+
+    "initial_scale_power": 12
+
+  },
+  "zero_optimization": {
+
+    "stage": 2,
+
+    "reduce_bucket_size": 5e7,
+
+    "allgather_bucket_size": 1.25e9,
+
+    "overlap_comm": true,
+
+    "contiguous_gradients": true
+
+  },
+  "zero_allow_untested_optimizer": true
+  
+}
+

@@ -32,6 +32,7 @@ from ..convbert.configuration_convbert import CONVBERT_PRETRAINED_CONFIG_ARCHIVE
 from ..ctrl.configuration_ctrl import CTRL_PRETRAINED_CONFIG_ARCHIVE_MAP, CTRLConfig
 from ..deberta.configuration_deberta import DEBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP, DebertaConfig
 from ..deberta_v2.configuration_deberta_v2 import DEBERTA_V2_PRETRAINED_CONFIG_ARCHIVE_MAP, DebertaV2Config
+from ..deberta_densenet.configuration_deberta_densenet import DEBERTA_DENSENET_PRETRAINED_CONFIG_ARCHIVE_MAP, DebertaDenseNetConfig
 from ..distilbert.configuration_distilbert import DISTILBERT_PRETRAINED_CONFIG_ARCHIVE_MAP, DistilBertConfig
 from ..dpr.configuration_dpr import DPR_PRETRAINED_CONFIG_ARCHIVE_MAP, DPRConfig
 from ..electra.configuration_electra import ELECTRA_PRETRAINED_CONFIG_ARCHIVE_MAP, ElectraConfig
@@ -113,6 +114,7 @@ ALL_PRETRAINED_CONFIG_ARCHIVE_MAP = dict(
         DPR_PRETRAINED_CONFIG_ARCHIVE_MAP,
         DEBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP,
         DEBERTA_V2_PRETRAINED_CONFIG_ARCHIVE_MAP,
+        DEBERTA_DENSENET_PRETRAINED_CONFIG_ARCHIVE_MAP,
         SQUEEZEBERT_PRETRAINED_CONFIG_ARCHIVE_MAP,
         XLM_PROPHETNET_PRETRAINED_CONFIG_ARCHIVE_MAP,
         PROPHETNET_PRETRAINED_CONFIG_ARCHIVE_MAP,
@@ -153,6 +155,7 @@ CONFIG_MAPPING = OrderedDict(
         ("longformer", LongformerConfig),
         ("roberta", RobertaConfig),
         ("deberta-v2", DebertaV2Config),
+        ("deberta-densenet", DebertaDenseNetConfig),
         ("deberta", DebertaConfig),
         ("flaubert", FlaubertConfig),
         ("fsmt", FSMTConfig),
@@ -218,6 +221,7 @@ MODEL_NAMES_MAPPING = OrderedDict(
         ("funnel", "Funnel Transformer"),
         ("lxmert", "LXMERT"),
         ("deberta-v2", "DeBERTa-v2"),
+        ("deberta-densenet", "DeBERTa-DenseNet"),
         ("deberta", "DeBERTa"),
         ("layoutlm", "LayoutLM"),
         ("dpr", "DPR"),

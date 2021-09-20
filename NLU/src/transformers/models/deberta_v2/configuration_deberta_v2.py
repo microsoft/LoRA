@@ -82,6 +82,16 @@ class DebertaV2Config(PretrainedConfig):
             :obj:`["p2c"]`, :obj:`["p2c", "c2p"]`, :obj:`["p2c", "c2p", 'p2p"]`.
         layer_norm_eps (:obj:`float`, optional, defaults to 1e-12):
             The epsilon used by the layer normalization layers.
+        cls_dropout (:obj:`float`, `optional`):
+            cls dropout.
+        apply_lora (:obj:`bool`, `optional`):
+            apply Lora.
+        lora_alpha (:obj:`int`, `optional`):
+            lora alpha.
+        lora_r (:obj:`int`, `optional`):
+            lora r.
+        rdrop_loss_wgt (:obj:`float`, `optional`, defaults to 0):
+            rdrop loss weight.
     """
     model_type = "deberta-v2"
 
@@ -106,6 +116,15 @@ class DebertaV2Config(PretrainedConfig):
         pos_att_type=None,
         pooler_dropout=0,
         pooler_hidden_act="gelu",
+        cls_dropout=None,
+        apply_lora=False,
+        lora_alpha=None,
+        lora_r=None,
+        reg_loss_wgt=0.0,
+        masking_prob=0.0,
+        cls_token_id=1,
+        sep_token_id=2,
+        unk_token_id=3,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -136,3 +155,12 @@ class DebertaV2Config(PretrainedConfig):
         self.pooler_hidden_size = kwargs.get("pooler_hidden_size", hidden_size)
         self.pooler_dropout = pooler_dropout
         self.pooler_hidden_act = pooler_hidden_act
+        self.cls_dropout = cls_dropout
+        self.apply_lora = apply_lora
+        self.lora_alpha = lora_alpha
+        self.lora_r = lora_r
+        self.reg_loss_wgt = reg_loss_wgt
+        self.masking_prob = masking_prob
+        self.cls_token_id = cls_token_id
+        self.sep_token_id = sep_token_id
+        self.unk_token_id = unk_token_id
