@@ -80,10 +80,6 @@ parser.add_argument('--eos_token_id', action='append', type=int, default=[50256]
 parser.add_argument('--output_file', type=str, default='beam_prediction.jsonl', 
                     help='output file name')
 
-parser.add_argument('--prefix_len', default=0, type=int, help='prefix length')
-
-parser.add_argument('--infix_len', default=0, type=int, help='infix length')
-
 
 def print_args(args):
     if args.rank == 0:
@@ -359,7 +355,6 @@ if __name__ == '__main__':
 
     valid_data = FT_Dataset(
         args.data, args.batch_size, args.seq_len, args.eval_len, 
-        prefix_len=args.prefix_len, infix_len=args.infix_len
     )    
     valid_sampler = torch.utils.data.distributed.DistributedSampler(valid_data)
     valid_loader = DataLoader(
@@ -371,19 +366,16 @@ if __name__ == '__main__':
         config = GPT2Config(
             n_embd=768, n_layer=12, n_head=12, 
             lora_attn_dim=args.lora_dim, lora_attn_alpha=args.lora_alpha,
-            prefix_len=args.prefix_len, infix_len=args.infix_len
         )
     elif args.model_card == 'gpt2.md':
         config = GPT2Config(
             n_embd=1024, n_layer=24, n_head=16, 
             lora_attn_dim=args.lora_dim, lora_attn_alpha=args.lora_alpha,
-            prefix_len=args.prefix_len, infix_len=args.infix_len
         )
     elif args.model_card == 'gpt2.lg':
         config = GPT2Config(
             n_embd=1280, n_layer=36, n_head=20, 
             lora_attn_dim=args.lora_dim, lora_attn_alpha=args.lora_alpha,
-            prefix_len=args.prefix_len, infix_len=args.infix_len
         )
 
     lm_net = GPT2LMModel(config)
