@@ -189,6 +189,22 @@ class ModelArguments:
         default=None,
         metadata={"help": "The file path of LoRA parameters."},
     )
+    apply_adapter: Optional[bool] = field(
+        default=False,
+        metadata={"help": "Whether to apply adapter or not."},
+    )
+    adapter_path: Optional[str] = field(
+        default=None,
+        metadata={"help": "The file path of adapter parameters."},
+    )
+    adapter_type: Optional[str] = field(
+        default='houlsby',
+        metadata={"help": "houlsby or pfeiffer"},
+    )
+    adapter_size: Optional[int] = field(
+        default=64,
+        metadata={"help": "8, 16, 32, 64"},
+    )
     reg_loss_wgt: Optional[float] = field(
         default=0.0,
         metadata={"help": "Regularization Loss Weight"},
@@ -333,6 +349,9 @@ def main():
         apply_lora=model_args.apply_lora,
         lora_alpha=model_args.lora_alpha,
         lora_r=model_args.lora_r,
+        apply_adapter=model_args.apply_adapter,
+        adapter_type=model_args.adapter_type,
+        adapter_size=model_args.adapter_size,
         reg_loss_wgt=model_args.reg_loss_wgt,
         masking_prob=model_args.masking_prob,
     )
@@ -360,6 +379,26 @@ def main():
             model.load_state_dict(lora_state_dict, strict=False)
         for name, param in model.named_parameters():
             param.requires_grad = not ('lora' not in name and (name.startswith('deberta') or name.startswith('roberta')))
+
+    if model_args.apply_adapter:
+        if model_args.adapter_path is not None:
+            adapter_state_dict = torch.load(os.path.join(model_args.adapter_path, 'pytorch_adapter.bin'))
+            head_state_dict = torch.load(os.path.join(model_args.adapter_path, 'pytorch_model_head.bin'))
+            added_state_dict = {}
+            for k, v in adapter_state_dict.items():
+                new_k = k.replace(data_args.task_name + '.', '').replace('adapter_down.0.', 'adapter_down.').replace('.adapters.', '.adapter.')
+                added_state_dict[new_k] = v
+            for k, v in head_state_dict.items():
+                new_k = k.replace('heads.' + data_args.task_name + '.1', 'classifier.dense').replace('heads.' + data_args.task_name + '.4', 'classifier.out_proj')
+                added_state_dict[new_k] = v
+            logger.info(f"Apply adapter state dict from {model_args.adapter_path}.")
+            logger.info(added_state_dict.keys())
+            missing_keys, unexpected_keys = model.load_state_dict(added_state_dict, strict=False)
+            for missing_key in missing_keys:
+                assert 'adapter' not in missing_key, missing_key + ' is missed in the model'
+            assert len(unexpected_keys) == 0, 'Unexpected keys ' + str(unexpected_keys)
+        for name, param in model.named_parameters():
+            param.requires_grad = not ('adapter' not in name and (name.startswith('deberta') or name.startswith('roberta')))
 
     # Preprocessing the datasets
     if data_args.task_name is not None:

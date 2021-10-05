@@ -107,6 +107,12 @@ class BertConfig(PretrainedConfig):
             lora alpha.
         lora_r (:obj:`int`, `optional`):
             lora r.
+        apply_adapter (:obj:`bool`, `optional`):
+            apply adapter.
+        adapter_type (:obj:`str`, `optional`):
+            houlsby or pfeiffer.
+        adapter_size (:obj:`int`, `optional`):
+            8 16 32 64.
 
     Examples::
 
@@ -144,6 +150,9 @@ class BertConfig(PretrainedConfig):
         apply_lora=False,
         lora_alpha=None,
         lora_r=None,
+        apply_adapter=False,
+        adapter_type=None,
+        adapter_size=None,
         **kwargs
     ):
         super().__init__(pad_token_id=pad_token_id, **kwargs)
@@ -166,3 +175,6 @@ class BertConfig(PretrainedConfig):
         self.apply_lora = apply_lora
         self.lora_alpha = lora_alpha
         self.lora_r = lora_r
+        self.apply_adapter = apply_adapter
+        self.adapter_type = adapter_type
+        self.adapter_size = adapter_size

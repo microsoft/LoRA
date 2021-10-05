@@ -15,6 +15,7 @@
 # limitations under the License.
 """PyTorch RoBERTa model. """
 
+from torch.nn.modules.container import ModuleDict
 import loralib as lora
 
 import math
@@ -23,6 +24,8 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint
 from torch.nn import CrossEntropyLoss, MSELoss
+
+from transformers.models.adapter import Adapter
 
 from ...activations import ACT2FN, gelu
 from ...file_utils import (
@@ -286,10 +289,14 @@ class RobertaSelfOutput(nn.Module):
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        if config.apply_adapter and config.adapter_type == 'houlsby':
+            self.adapter = Adapter(config.hidden_size, config.adapter_size, 'swish')
 
     def forward(self, hidden_states, input_tensor):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.dropout(hidden_states)
+        if hasattr(self, 'adapter'):
+            hidden_states = self.adapter(hidden_states, residual_input=hidden_states)
         hidden_states = self.LayerNorm(hidden_states + input_tensor)
         return hidden_states
 
@@ -367,10 +374,18 @@ class RobertaOutput(nn.Module):
         self.dense = nn.Linear(config.intermediate_size, config.hidden_size)
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.adapter_type = config.adapter_type
+        if config.apply_adapter:
+            self.adapter = Adapter(config.hidden_size, config.adapter_size, 'swish' if config.adapter_type == 'houlsby' else 'relu')
 
     def forward(self, hidden_states, input_tensor):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.dropout(hidden_states)
+        if hasattr(self, 'adapter'):
+            residual = hidden_states
+            if self.adapter_type == 'pfeiffer':
+                hidden_states = self.LayerNorm(hidden_states + input_tensor)
+            hidden_states = self.adapter(hidden_states, residual_input=residual)
         hidden_states = self.LayerNorm(hidden_states + input_tensor)
         return hidden_states
 
