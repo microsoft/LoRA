@@ -172,7 +172,6 @@ _import_structure = {
     "models.ctrl": ["CTRL_PRETRAINED_CONFIG_ARCHIVE_MAP", "CTRLConfig", "CTRLTokenizer"],
     "models.deberta": ["DEBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP", "DebertaConfig", "DebertaTokenizer"],
     "models.deberta_v2": ["DEBERTA_V2_PRETRAINED_CONFIG_ARCHIVE_MAP", "DebertaV2Config"],
-    "models.deberta_densenet": ["DEBERTA_DENSENET_PRETRAINED_CONFIG_ARCHIVE_MAP", "DebertaDenseNetConfig"],
     "models.distilbert": ["DISTILBERT_PRETRAINED_CONFIG_ARCHIVE_MAP", "DistilBertConfig", "DistilBertTokenizer"],
     "models.dpr": [
         "DPR_PRETRAINED_CONFIG_ARCHIVE_MAP",
@@ -276,7 +275,6 @@ if is_sentencepiece_available():
     _import_structure["models.bert_generation"].append("BertGenerationTokenizer")
     _import_structure["models.camembert"].append("CamembertTokenizer")
     _import_structure["models.deberta_v2"].append("DebertaV2Tokenizer")
-    _import_structure["models.deberta_densenet"].append("DebertaDenseNetTokenizer")
     _import_structure["models.m2m_100"].append("M2M100Tokenizer")
     _import_structure["models.marian"].append("MarianTokenizer")
     _import_structure["models.mbart"].append("MBartTokenizer")
@@ -568,17 +566,6 @@ if is_torch_available():
             "DebertaV2PreTrainedModel",
             "DebertaV2ForTokenClassification",
             "DebertaV2ForQuestionAnswering",
-        ]
-    )
-    _import_structure["models.deberta_densenet"].extend(
-        [
-            "DEBERTA_DENSENET_PRETRAINED_MODEL_ARCHIVE_LIST",
-            "DebertaDenseNetForSequenceClassification",
-            "DebertaDenseNetModel",
-            "DebertaDenseNetForMaskedLM",
-            "DebertaDenseNetPreTrainedModel",
-            "DebertaDenseNetForTokenClassification",
-            "DebertaDenseNetForQuestionAnswering",
         ]
     )
     _import_structure["models.distilbert"].extend(
@@ -1377,7 +1364,6 @@ if TYPE_CHECKING:
     from .models.ctrl import CTRL_PRETRAINED_CONFIG_ARCHIVE_MAP, CTRLConfig, CTRLTokenizer
     from .models.deberta import DEBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP, DebertaConfig, DebertaTokenizer
     from .models.deberta_v2 import DEBERTA_V2_PRETRAINED_CONFIG_ARCHIVE_MAP, DebertaV2Config
-    from .models.deberta_densenet import DEBERTA_DENSENET_PRETRAINED_CONFIG_ARCHIVE_MAP, DebertaDenseNetConfig
     from .models.distilbert import DISTILBERT_PRETRAINED_CONFIG_ARCHIVE_MAP, DistilBertConfig, DistilBertTokenizer
     from .models.dpr import (
         DPR_PRETRAINED_CONFIG_ARCHIVE_MAP,
@@ -1497,7 +1483,6 @@ if TYPE_CHECKING:
         from .models.bert_generation import BertGenerationTokenizer
         from .models.camembert import CamembertTokenizer
         from .models.deberta_v2 import DebertaV2Tokenizer
-        from .models.deberta_densenet import DebertaDenseNetTokenizer
         from .models.m2m_100 import M2M100Tokenizer
         from .models.marian import MarianTokenizer
         from .models.mbart import MBart50Tokenizer, MBartTokenizer
@@ -1720,15 +1705,6 @@ if TYPE_CHECKING:
             DebertaV2ForTokenClassification,
             DebertaV2Model,
             DebertaV2PreTrainedModel,
-        )
-        from .models.deberta_densenet import (
-            DEBERTA_DENSENET_PRETRAINED_MODEL_ARCHIVE_LIST,
-            DebertaDenseNetForMaskedLM,
-            DebertaDenseNetForQuestionAnswering,
-            DebertaDenseNetForSequenceClassification,
-            DebertaDenseNetForTokenClassification,
-            DebertaDenseNetModel,
-            DebertaDenseNetPreTrainedModel,
         )
         from .models.distilbert import (
             DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST,

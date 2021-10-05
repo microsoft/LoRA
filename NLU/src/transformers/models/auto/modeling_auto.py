@@ -89,13 +89,6 @@ from ..deberta_v2.modeling_deberta_v2 import (
     DebertaV2ForTokenClassification,
     DebertaV2Model,
 )
-from ..deberta_densenet.modeling_deberta_densenet import (
-    DebertaDenseNetForMaskedLM,
-    DebertaDenseNetForQuestionAnswering,
-    DebertaDenseNetForSequenceClassification,
-    DebertaDenseNetForTokenClassification,
-    DebertaDenseNetModel,
-)
 from ..distilbert.modeling_distilbert import (
     DistilBertForMaskedLM,
     DistilBertForMultipleChoice,
@@ -277,7 +270,6 @@ from .configuration_auto import (
     CTRLConfig,
     DebertaConfig,
     DebertaV2Config,
-    DebertaDenseNetConfig,
     DistilBertConfig,
     DPRConfig,
     ElectraConfig,
@@ -362,7 +354,6 @@ MODEL_MAPPING = OrderedDict(
         (BertGenerationConfig, BertGenerationEncoder),
         (DebertaConfig, DebertaModel),
         (DebertaV2Config, DebertaV2Model),
-        (DebertaDenseNetConfig, DebertaDenseNetModel),
         (DPRConfig, DPRQuestionEncoder),
         (XLMProphetNetConfig, XLMProphetNetModel),
         (ProphetNetConfig, ProphetNetModel),
@@ -405,7 +396,6 @@ MODEL_FOR_PRETRAINING_MAPPING = OrderedDict(
         (IBertConfig, IBertForMaskedLM),
         (DebertaConfig, DebertaForMaskedLM),
         (DebertaV2Config, DebertaV2ForMaskedLM),
-        (DebertaDenseNetConfig, DebertaDenseNetForMaskedLM),
     ]
 )
 
@@ -447,7 +437,6 @@ MODEL_WITH_LM_HEAD_MAPPING = OrderedDict(
         (TapasConfig, TapasForMaskedLM),
         (DebertaConfig, DebertaForMaskedLM),
         (DebertaV2Config, DebertaV2ForMaskedLM),
-        (DebertaDenseNetConfig, DebertaDenseNetForMaskedLM),
         (IBertConfig, IBertForMaskedLM),
     ]
 )
@@ -507,7 +496,6 @@ MODEL_FOR_MASKED_LM_MAPPING = OrderedDict(
         (TapasConfig, TapasForMaskedLM),
         (DebertaConfig, DebertaForMaskedLM),
         (DebertaV2Config, DebertaV2ForMaskedLM),
-        (DebertaDenseNetConfig, DebertaDenseNetForMaskedLM),
         (IBertConfig, IBertForMaskedLM),
     ]
 )
@@ -556,7 +544,6 @@ MODEL_FOR_SEQUENCE_CLASSIFICATION_MAPPING = OrderedDict(
         (FunnelConfig, FunnelForSequenceClassification),
         (DebertaConfig, DebertaForSequenceClassification),
         (DebertaV2Config, DebertaV2ForSequenceClassification),
-        (DebertaDenseNetConfig, DebertaDenseNetForSequenceClassification),
         (GPT2Config, GPT2ForSequenceClassification),
         (OpenAIGPTConfig, OpenAIGPTForSequenceClassification),
         (ReformerConfig, ReformerForSequenceClassification),
@@ -594,7 +581,6 @@ MODEL_FOR_QUESTION_ANSWERING_MAPPING = OrderedDict(
         (MPNetConfig, MPNetForQuestionAnswering),
         (DebertaConfig, DebertaForQuestionAnswering),
         (DebertaV2Config, DebertaV2ForQuestionAnswering),
-        (DebertaDenseNetConfig, DebertaDenseNetForQuestionAnswering),
         (IBertConfig, IBertForQuestionAnswering),
     ]
 )
@@ -629,7 +615,6 @@ MODEL_FOR_TOKEN_CLASSIFICATION_MAPPING = OrderedDict(
         (MPNetConfig, MPNetForTokenClassification),
         (DebertaConfig, DebertaForTokenClassification),
         (DebertaV2Config, DebertaV2ForTokenClassification),
-        (DebertaDenseNetConfig, DebertaDenseNetForTokenClassification),
         (IBertConfig, IBertForTokenClassification),
     ]
 )
