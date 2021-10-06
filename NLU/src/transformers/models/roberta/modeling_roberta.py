@@ -296,7 +296,7 @@ class RobertaSelfOutput(nn.Module):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.dropout(hidden_states)
         if hasattr(self, 'adapter'):
-            hidden_states = self.adapter(hidden_states, residual_input=hidden_states)
+            hidden_states = self.adapter(hidden_states, residual=hidden_states)
         hidden_states = self.LayerNorm(hidden_states + input_tensor)
         return hidden_states
 
@@ -385,7 +385,7 @@ class RobertaOutput(nn.Module):
             residual = hidden_states
             if self.adapter_type == 'pfeiffer':
                 hidden_states = self.LayerNorm(hidden_states + input_tensor)
-            hidden_states = self.adapter(hidden_states, residual_input=residual)
+            hidden_states = self.adapter(hidden_states, residual=residual)
         hidden_states = self.LayerNorm(hidden_states + input_tensor)
         return hidden_states
 
