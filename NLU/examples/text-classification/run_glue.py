@@ -205,6 +205,10 @@ class ModelArguments:
         default=64,
         metadata={"help": "8, 16, 32, 64"},
     )
+    apply_bitfit: Optional[bool] = field(
+        default=False,
+        metadata={"help": "Whether to apply bitfit or not."},
+    )
     reg_loss_wgt: Optional[float] = field(
         default=0.0,
         metadata={"help": "Regularization Loss Weight"},
@@ -371,12 +375,14 @@ def main():
         use_auth_token=True if model_args.use_auth_token else None,
     )
 
+    trainable_params = []
     if model_args.apply_lora:
         if model_args.lora_path is not None:
             lora_state_dict = torch.load(model_args.lora_path)
             logger.info(f"Apply LoRA state dict from {model_args.lora_path}.")
             logger.info(lora_state_dict.keys())
             model.load_state_dict(lora_state_dict, strict=False)
+        trainable_params.append('lora')
         for name, param in model.named_parameters():
             param.requires_grad = not ('lora' not in name and (name.startswith('deberta') or name.startswith('roberta')))
 
@@ -386,7 +392,7 @@ def main():
             head_state_dict = torch.load(os.path.join(model_args.adapter_path, 'pytorch_model_head.bin'))
             added_state_dict = {}
             for k, v in adapter_state_dict.items():
-                new_k = k.replace(data_args.task_name + '.', '').replace('adapter_down.0.', 'adapter_down.').replace('.adapters.', '.adapter.')
+                new_k = k.replace(data_args.task_name + '.', '').replace('adapter_down.0.', 'adapter_A.').replace('adapter_up.', 'adapter_B.').replace('.adapters.', '.adapter.')
                 added_state_dict[new_k] = v
             for k, v in head_state_dict.items():
                 new_k = k.replace('heads.' + data_args.task_name + '.1', 'classifier.dense').replace('heads.' + data_args.task_name + '.4', 'classifier.out_proj')
@@ -397,8 +403,22 @@ def main():
             for missing_key in missing_keys:
                 assert 'adapter' not in missing_key, missing_key + ' is missed in the model'
             assert len(unexpected_keys) == 0, 'Unexpected keys ' + str(unexpected_keys)
+        trainable_params.append('adapter')
         for name, param in model.named_parameters():
             param.requires_grad = not ('adapter' not in name and (name.startswith('deberta') or name.startswith('roberta')))
+
+    if model_args.apply_bitfit:
+        trainable_params.append('bias')
+
+    if len(trainable_params) > 0:
+        for name, param in model.named_parameters():
+            if name.startswith('deberta') or name.startswith('roberta'):
+                param.requires_grad = False
+                for trainable_param in trainable_params:
+                    if trainable_param in name:
+                        param.requires_grad = True
+            else:
+                param.requires_grad = True
 
     # Preprocessing the datasets
     if data_args.task_name is not None:
