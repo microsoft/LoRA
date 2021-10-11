@@ -1,4 +1,4 @@
-export num_gpus=2
+export num_gpus=8
 export CUBLAS_WORKSPACE_CONFIG=":16:8" # https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
 export PYTHONHASHSEED=0
 export output_dir="./mnli"
@@ -8,8 +8,8 @@ examples/text-classification/run_glue.py \
 --task_name mnli \
 --do_train \
 --do_eval \
---max_seq_length 256 \
---per_device_train_batch_size 32 \
+--max_seq_length 128 \
+--per_device_train_batch_size 4 \
 --learning_rate 3e-4 \
 --num_train_epochs 10 \
 --output_dir $output_dir/model \
