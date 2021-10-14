@@ -11,8 +11,8 @@ examples/text-classification/run_glue.py \
 --do_eval \
 --max_seq_length 128 \
 --per_device_train_batch_size 4 \
---learning_rate 2e-4 \
---num_train_epochs 30 \
+--learning_rate 3e-4 \
+--num_train_epochs 10 \
 --output_dir $output_dir/model \
 --logging_steps 10 \
 --logging_dir $output_dir/log \
