@@ -6,7 +6,7 @@ We only support PyTorch for now.
 See our paper for a detailed description of LoRA.
 
 **LoRA: Low-Rank Adaptation of Large Language Models** <br>
-*Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Weizhu Chen* <br>
+*Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen* <br>
 Paper: https://arxiv.org/abs/2106.09685 <br>
 
 LoRA reduces the number of trainable parameters by learning pairs of rank-decompostion matrices while freezing the original weights.
@@ -30,7 +30,7 @@ We obtain result comparable or superior to full finetuning on the GLUE benchmark
 
 <i>Note: You still need the original pre-trained checkpoint from [HuggingFace](https://huggingface.co/) to use the LoRA checkpoints.</i>
 
-Fine-tuning numbers are taken from [Liu et al. (2019)](https://arxiv.org/abs/1907.11692) and [He et al. (2020)](https://arxiv.org/abs/2006.03654).  We include confidence intervals on results from our experiments. Please follow the instructions in `NLU/` to reproduce our results.
+Fine-tuning numbers are taken from [Liu et al. (2019)](https://arxiv.org/abs/1907.11692) and [He et al. (2020)](https://arxiv.org/abs/2006.03654).  We include confidence intervals on results from our experiments. Please follow the instructions in `examples/NLU/` to reproduce our results.
 
 On GPT-2, LoRA compares favorably to both full finetuning and other efficient tuning methods, such as [adapter (Houlsby et al., 2019)](https://arxiv.org/abs/1902.00751) and [prefix tuning (Li and Liang, 2021)](https://arxiv.org/abs/2101.00190). We evaluated on E2E NLG Challenge, DART, and WebNLG:
 
@@ -55,16 +55,16 @@ Download the GPT-2 LoRA checkpoints:
  * [GPT-2 Large DART](https://github.com/microsoft/LoRA/releases/download/GPT-2/gpt2_lg_lora_dart.pt) (2.3 MB)
  * [GPT-2 Large WebNLG](https://github.com/microsoft/LoRA/releases/download/GPT-2/gpt2_lg_lora_webnlg.pt) (2.3 MB)
 
-Please follow the instructions in `NLG/` to reproduce our result.
+Please follow the instructions in `examples/NLG/` to reproduce our result.
 ## Repository Overview
 
 <i>(The initial release of this repo has been archived in the branch "snapshot-9-15-2021")</i>
 
 There are several directories in this repo:
 * [loralib/](loralib) contains the source code for the package `loralib`, which needs to be installed to run the examples we provide;
-* [NLG/](NLG) contains an example implementation of LoRA in GPT-2 using our package, which can be used to reproduce the result in our paper;
-* [NLU/](NLU) contains an example implementation of LoRA in RoBERTa and DeBERTa using our package, which produces competitive results on the GLUE benchmark;
-* See how we use `loralib` in [GPT-2](NLG/src/model.py), [RoBERTa](NLU/src/transformers/models/roberta/modeling_roberta.py), and [DeBERTa v2](NLU/src/transformers/models/deberta_v2/modeling_deberta_v2.py)
+* [examples/NLG/](examples/NLG) contains an example implementation of LoRA in GPT-2 using our package, which can be used to reproduce the result in our paper;
+* [examples/NLU/](examples/NLU) contains an example implementation of LoRA in RoBERTa and DeBERTa using our package, which produces competitive results on the GLUE benchmark;
+* See how we use `loralib` in [GPT-2](examples/NLG/src/model.py), [RoBERTa](examples/NLU/src/transformers/models/roberta/modeling_roberta.py), and [DeBERTa v2](examples/NLU/src/transformers/models/deberta_v2/modeling_deberta_v2.py)
 
 ## Quickstart
 
@@ -155,7 +155,7 @@ The GPT-2 example:
 * Phillip Wallis (phwallis@microsoft.com)
 * Yelong Shen (yeshe@microsoft.com)
 
-The DeBERTa example:
+The RoBERTa/DeBERTa example:
 * Lu Wang (luw@microsoft.com)
 
 ## Acknowledgements
@@ -165,7 +165,7 @@ We thank in alphabetical order Jianfeng Gao, Jade Huang, Jiayuan Huang, Lisa Xia
 ```
 @misc{hu2021lora,
     title={LoRA: Low-Rank Adaptation of Large Language Models},
-    author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Chen, Weizhu},
+    author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Lu and Chen, Weizhu},
     year={2021},
     eprint={2106.09685},
     archivePrefix={arXiv},
