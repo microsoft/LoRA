@@ -103,4 +103,5 @@ dependencies:
     - zipp==3.5.0
     - wrapt==1.12.1
     - azureml-core==1.32.0
+    - loralib==0.1.1
 prefix: /opt/conda/envs/transformers

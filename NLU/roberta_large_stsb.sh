@@ -5,7 +5,7 @@ export output_dir="./stsb"
 python -m torch.distributed.launch --nproc_per_node=$num_gpus \
 examples/text-classification/run_glue.py \
 --model_name_or_path roberta-large \
---lora_path ./roberta_large_mnli_lora.bin \
+--lora_path ./roberta_large_lora_mnli.bin \
 --task_name stsb \
 --do_train \
 --do_eval \
