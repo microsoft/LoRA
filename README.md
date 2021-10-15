@@ -30,7 +30,7 @@ We obtain result comparable or superior to full finetuning on the GLUE benchmark
 
 <i>Note: You still need the original pre-trained checkpoint from [HuggingFace](https://huggingface.co/) to use the LoRA checkpoints.</i>
 
-Fine-tuning numbers are taken from [Liu et al. (2019)](https://arxiv.org/abs/1907.11692) and [He et al. (2020)](https://arxiv.org/abs/2006.03654).  We include confidence intervals on results from our experiments. Please follow the instructions in `NLU/` to reproduce our results.
+Fine-tuning numbers are taken from [Liu et al. (2019)](https://arxiv.org/abs/1907.11692) and [He et al. (2020)](https://arxiv.org/abs/2006.03654).  We include confidence intervals on results from our experiments. Please follow the instructions in `examples/NLU/` to reproduce our results.
 
 On GPT-2, LoRA compares favorably to both full finetuning and other efficient tuning methods, such as [adapter (Houlsby et al., 2019)](https://arxiv.org/abs/1902.00751) and [prefix tuning (Li and Liang, 2021)](https://arxiv.org/abs/2101.00190). We evaluated on E2E NLG Challenge, DART, and WebNLG:
 
@@ -55,15 +55,15 @@ Download the GPT-2 LoRA checkpoints:
  * [GPT-2 Large DART](https://github.com/microsoft/LoRA/releases/download/GPT-2/gpt2_lg_lora_dart.pt) (2.3 MB)
  * [GPT-2 Large WebNLG](https://github.com/microsoft/LoRA/releases/download/GPT-2/gpt2_lg_lora_webnlg.pt) (2.3 MB)
 
-Please follow the instructions in `NLG/` to reproduce our result.
+Please follow the instructions in `examples/NLG/` to reproduce our result.
 ## Repository Overview
 
 <i>(The initial release of this repo has been archived in the branch "snapshot-9-15-2021")</i>
 
 There are several directories in this repo:
 * [loralib/](loralib) contains the source code for the package `loralib`, which needs to be installed to run the examples we provide;
-* [NLG/](NLG) contains an example implementation of LoRA in GPT-2 using our package, which can be used to reproduce the result in our paper;
-* [NLU/](NLU) contains an example implementation of LoRA in RoBERTa and DeBERTa using our package, which produces competitive results on the GLUE benchmark;
+* [examples/NLG/](examples/NLG) contains an example implementation of LoRA in GPT-2 using our package, which can be used to reproduce the result in our paper;
+* [examples/NLU/](examples/NLU) contains an example implementation of LoRA in RoBERTa and DeBERTa using our package, which produces competitive results on the GLUE benchmark;
 * See how we use `loralib` in [GPT-2](NLG/src/model.py), [RoBERTa](NLU/src/transformers/models/roberta/modeling_roberta.py), and [DeBERTa v2](NLU/src/transformers/models/deberta_v2/modeling_deberta_v2.py)
 
 ## Quickstart
