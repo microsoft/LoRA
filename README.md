@@ -6,7 +6,7 @@ We only support PyTorch for now.
 See our paper for a detailed description of LoRA.
 
 **LoRA: Low-Rank Adaptation of Large Language Models** <br>
-*Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Weizhu Chen* <br>
+*Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen* <br>
 Paper: https://arxiv.org/abs/2106.09685 <br>
 
 LoRA reduces the number of trainable parameters by learning pairs of rank-decompostion matrices while freezing the original weights.
@@ -155,7 +155,7 @@ The GPT-2 example:
 * Phillip Wallis (phwallis@microsoft.com)
 * Yelong Shen (yeshe@microsoft.com)
 
-The DeBERTa example:
+The RoBERTa/DeBERTa example:
 * Lu Wang (luw@microsoft.com)
 
 ## Acknowledgements
@@ -165,7 +165,7 @@ We thank in alphabetical order Jianfeng Gao, Jade Huang, Jiayuan Huang, Lisa Xia
 ```
 @misc{hu2021lora,
     title={LoRA: Low-Rank Adaptation of Large Language Models},
-    author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Chen, Weizhu},
+    author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Lu and Chen, Weizhu},
     year={2021},
     eprint={2106.09685},
     archivePrefix={arXiv},

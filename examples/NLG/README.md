@@ -3,7 +3,7 @@
 This folder contains the implementation of LoRA in GPT-2 using the Python package `lora` and steps to replicate the results in our recent paper
 
 **LoRA: Low-Rank Adaptation of Large Language Models** <br>
-*Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Weizhu Chen* <br>
+*Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen* <br>
 Paper: https://arxiv.org/abs/2106.09685 <br>
 
 <p>
@@ -173,7 +173,7 @@ cd ../..
 ```
 @misc{hu2021lora,
     title={LoRA: Low-Rank Adaptation of Large Language Models},
-    author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Chen, Weizhu},
+    author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Lu and Chen, Weizhu},
     year={2021},
     eprint={2106.09685},
     archivePrefix={arXiv},
