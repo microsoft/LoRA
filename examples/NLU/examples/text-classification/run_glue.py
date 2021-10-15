@@ -383,8 +383,6 @@ def main():
             logger.info(lora_state_dict.keys())
             model.load_state_dict(lora_state_dict, strict=False)
         trainable_params.append('lora')
-        for name, param in model.named_parameters():
-            param.requires_grad = not ('lora' not in name and (name.startswith('deberta') or name.startswith('roberta')))
 
     if model_args.apply_adapter:
         if model_args.adapter_path is not None:
@@ -404,8 +402,6 @@ def main():
                 assert 'adapter' not in missing_key, missing_key + ' is missed in the model'
             assert len(unexpected_keys) == 0, 'Unexpected keys ' + str(unexpected_keys)
         trainable_params.append('adapter')
-        for name, param in model.named_parameters():
-            param.requires_grad = not ('adapter' not in name and (name.startswith('deberta') or name.startswith('roberta')))
 
     if model_args.apply_bitfit:
         trainable_params.append('bias')
@@ -417,6 +413,7 @@ def main():
                 for trainable_param in trainable_params:
                     if trainable_param in name:
                         param.requires_grad = True
+                        break
             else:
                 param.requires_grad = True
 
