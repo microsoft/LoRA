@@ -64,7 +64,7 @@ There are several directories in this repo:
 * [loralib/](loralib) contains the source code for the package `loralib`, which needs to be installed to run the examples we provide;
 * [examples/NLG/](examples/NLG) contains an example implementation of LoRA in GPT-2 using our package, which can be used to reproduce the result in our paper;
 * [examples/NLU/](examples/NLU) contains an example implementation of LoRA in RoBERTa and DeBERTa using our package, which produces competitive results on the GLUE benchmark;
-* See how we use `loralib` in [GPT-2](NLG/src/model.py), [RoBERTa](NLU/src/transformers/models/roberta/modeling_roberta.py), and [DeBERTa v2](NLU/src/transformers/models/deberta_v2/modeling_deberta_v2.py)
+* See how we use `loralib` in [GPT-2](examples/NLG/src/model.py), [RoBERTa](examples/NLU/src/transformers/models/roberta/modeling_roberta.py), and [DeBERTa v2](examples/NLU/src/transformers/models/deberta_v2/modeling_deberta_v2.py)
 
 ## Quickstart
 
