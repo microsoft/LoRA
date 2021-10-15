@@ -8,7 +8,7 @@ examples/text-classification/run_glue.py \
 --task_name qqp \
 --do_train \
 --do_eval \
---max_seq_length 128 \
+--max_seq_length 512 \
 --per_device_train_batch_size 4 \
 --learning_rate 3e-4 \
 --num_train_epochs 20 \

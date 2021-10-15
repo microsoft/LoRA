@@ -9,8 +9,8 @@ examples/text-classification/run_glue.py \
 --task_name rte \
 --do_train \
 --do_eval \
---max_seq_length 128 \
---per_device_train_batch_size 4 \
+--max_seq_length 512 \
+--per_device_train_batch_size 8 \
 --learning_rate 4e-4 \
 --num_train_epochs 20 \
 --output_dir $output_dir/model \
