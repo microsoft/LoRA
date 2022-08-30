@@ -68,7 +68,7 @@ class Embedding(nn.Embedding, LoRALayer):
             self.merged = False
     
     def eval(self):
-        nn.Linear.eval(self)
+        nn.Embedding.eval(self)
         if self.merge_weights and not self.merged:
             # Merge the weights and mark it
             if self.r > 0:
