@@ -61,20 +61,19 @@ class Embedding(nn.Embedding, LoRALayer):
 
     def train(self, mode: bool = True):
         nn.Embedding.train(self, mode)
-        if self.merge_weights and self.merged:
-            # Make sure that the weights are not merged
-            if self.r > 0:
-                self.weight.data -= (self.lora_B @ self.lora_A).T * self.scaling
-            self.merged = False
-    
-    def eval(self):
-        nn.Embedding.eval(self)
-        if self.merge_weights and not self.merged:
-            # Merge the weights and mark it
-            if self.r > 0:
-                self.weight.data += (self.lora_B @ self.lora_A) * self.scaling
-            self.merged = True
-
+        if mode:
+            if self.merge_weights and self.merged:
+                # Make sure that the weights are not merged
+                if self.r > 0:
+                    self.weight.data -= (self.lora_B @ self.lora_A).T * self.scaling
+                self.merged = False
+        else:
+            if self.merge_weights and not self.merged:
+                # Merge the weights and mark it
+                if self.r > 0:
+                    self.weight.data += (self.lora_B @ self.lora_A) * self.scaling
+                self.merged = True
+        
     def forward(self, x: torch.Tensor):
         if self.r > 0 and not self.merged:
             result = nn.Embedding.forward(self, x)
@@ -129,21 +128,18 @@ class Linear(nn.Linear, LoRALayer):
         def T(w):
             return w.T if self.fan_in_fan_out else w
         nn.Linear.train(self, mode)
-        if self.merge_weights and self.merged:
-            # Make sure that the weights are not merged
-            if self.r > 0:
-                self.weight.data -= T(self.lora_B @ self.lora_A) * self.scaling
-            self.merged = False
-    
-    def eval(self):
-        def T(w):
-            return w.T if self.fan_in_fan_out else w
-        nn.Linear.eval(self)
-        if self.merge_weights and not self.merged:
-            # Merge the weights and mark it
-            if self.r > 0:
-                self.weight.data += T(self.lora_B @ self.lora_A) * self.scaling
-            self.merged = True
+        if mode:
+            if self.merge_weights and self.merged:
+                # Make sure that the weights are not merged
+                if self.r > 0:
+                    self.weight.data -= T(self.lora_B @ self.lora_A) * self.scaling
+                self.merged = False
+        else:
+            if self.merge_weights and not self.merged:
+                # Merge the weights and mark it
+                if self.r > 0:
+                    self.weight.data += T(self.lora_B @ self.lora_A) * self.scaling
+                self.merged = True       
 
     def forward(self, x: torch.Tensor):
         def T(w):
@@ -217,31 +213,28 @@ class MergedLinear(nn.Linear, LoRALayer):
         def T(w):
             return w.T if self.fan_in_fan_out else w
         nn.Linear.train(self, mode)
-        if self.merge_weights and self.merged:
-            # Make sure that the weights are not merged
-            if self.r > 0 and any(self.enable_lora):
-                delta_w = F.conv1d(
-                    self.lora_A.data.unsqueeze(0), 
-                    self.lora_B.data.unsqueeze(-1), 
-                    groups=sum(self.enable_lora)
-                ).squeeze(0)
-                self.weight.data -= self.zero_pad(T(delta_w * self.scaling))
-            self.merged = False
-    
-    def eval(self):
-        def T(w):
-            return w.T if self.fan_in_fan_out else w
-        nn.Linear.eval(self)
-        if self.merge_weights and not self.merged:
-            # Merge the weights and mark it
-            if self.r > 0 and any(self.enable_lora):
-                delta_w = F.conv1d(
-                    self.lora_A.data.unsqueeze(0), 
-                    self.lora_B.data.unsqueeze(-1), 
-                    groups=sum(self.enable_lora)
-                ).squeeze(0)
-                self.weight.data += self.zero_pad(T(delta_w * self.scaling))
-            self.merged = True
+        if mode:
+            if self.merge_weights and self.merged:
+                # Make sure that the weights are not merged
+                if self.r > 0 and any(self.enable_lora):
+                    delta_w = F.conv1d(
+                        self.lora_A.data.unsqueeze(0), 
+                        self.lora_B.data.unsqueeze(-1), 
+                        groups=sum(self.enable_lora)
+                    ).squeeze(0)
+                    self.weight.data -= self.zero_pad(T(delta_w * self.scaling))
+                self.merged = False
+        else:
+            if self.merge_weights and not self.merged:
+                # Merge the weights and mark it
+                if self.r > 0 and any(self.enable_lora):
+                    delta_w = F.conv1d(
+                        self.lora_A.data.unsqueeze(0), 
+                        self.lora_B.data.unsqueeze(-1), 
+                        groups=sum(self.enable_lora)
+                    ).squeeze(0)
+                    self.weight.data += self.zero_pad(T(delta_w * self.scaling))
+                self.merged = True        
 
     def forward(self, x: torch.Tensor):
         def T(w):
@@ -300,17 +293,16 @@ class Conv2d(nn.Conv2d, LoRALayer):
 
     def train(self, mode: bool = True):
         nn.Conv2d.train(self, mode)
-        if self.merge_weights and self.merged:
-            # Make sure that the weights are not merged
-            self.weight.data -= (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
-            self.merged = False
-    
-    def eval(self):
-        nn.Conv2d.eval(self)
-        if self.merge_weights and not self.merged:
-            # Merge the weights and mark it
-            self.weight.data += (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
-            self.merged = True
+        if mode:
+            if self.merge_weights and self.merged:
+                # Make sure that the weights are not merged
+                self.weight.data -= (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
+                self.merged = False
+        else:
+            if self.merge_weights and not self.merged:
+                # Merge the weights and mark it
+                self.weight.data += (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
+                self.merged = True
 
     def forward(self, x: torch.Tensor):
         if self.r > 0 and not self.merged:
