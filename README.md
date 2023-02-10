@@ -147,7 +147,7 @@ torch.save(lora.lora_state_dict(model, bias='all'), checkpoint_path)
 Please contact us or post an issue if you have any questions.
 
 For questions related to the package `loralib`:
-* Edward Hu (edwardhu@microsoft.com)
+* Edward Hu (edward@edwardjhu.com)
 * Phillip Wallis (phwallis@microsoft.com)
 * Weizhu Chen (wzchen@microsoft.com)
 
