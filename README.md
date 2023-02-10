@@ -9,6 +9,8 @@ See our paper for a detailed description of LoRA.
 *Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen* <br>
 Paper: https://arxiv.org/abs/2106.09685 <br>
 
+*Update 2/2023: LoRA is now supported by the [State-of-the-art Parameter-Efficient Fine-Tuning (PEFT)](https://github.com/huggingface/peft) library by HuggingFace.*
+
 LoRA reduces the number of trainable parameters by learning pairs of rank-decompostion matrices while freezing the original weights.
 This vastly reduces the storage requirement for large language models adapted to specific tasks and enables efficient task-switching during deployment all without introducing inference latency.
 LoRA also outperforms several other adaptation methods including adapter, prefix-tuning, and fine-tuning.
