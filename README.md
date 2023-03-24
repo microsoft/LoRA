@@ -1,5 +1,5 @@
 # LoRA: Low-Rank Adaptation of Large Language Models
-
+*(For the radio communication technique, see [LoRa](https://lora-alliance.org/).)*
 
 This repo contains the source code of the Python package `loralib` and several examples of how to integrate it with PyTorch models, such as those in HuggingFace.
 We only support PyTorch for now.
