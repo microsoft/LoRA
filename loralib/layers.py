@@ -312,3 +312,63 @@ class Conv2d(nn.Conv2d, LoRALayer):
                 self.bias, self.stride, self.padding, self.dilation, self.groups
             )
         return nn.Conv2d.forward(self, x)
+
+
+class Conv1d(nn.Conv1d, LoRALayer):
+    # LoRA implemented in a dense layer
+    def __init__(
+        self, 
+        in_channels: int, 
+        out_channels: int,
+        kernel_size: int,
+        r: int = 0, 
+        lora_alpha: int = 1, 
+        lora_dropout: float = 0.,
+        merge_weights: bool = True,
+        **kwargs
+    ):
+        nn.Conv1d.__init__(self, in_channels, out_channels, kernel_size, **kwargs)
+        LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout,
+                           merge_weights=merge_weights)
+        assert type(kernel_size) is int
+        # Actual trainable parameters
+        if r > 0:
+            self.lora_A = nn.Parameter(
+                self.weight.new_zeros((r*kernel_size, in_channels*kernel_size))
+            )
+            self.lora_B = nn.Parameter(
+                self.weight.new_zeros((out_channels*kernel_size, r*kernel_size))
+            )
+            self.scaling = self.lora_alpha / self.r
+            # Freezing the pre-trained weight matrix
+            self.weight.requires_grad = False
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.Conv1d.reset_parameters(self)
+        if hasattr(self, 'lora_A'):
+            # initialize A the same way as the default for nn.Linear and B to zero
+            nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+            nn.init.zeros_(self.lora_B)
+
+    def train(self, mode: bool = True):
+        nn.Conv1d.train(self, mode)
+        if mode:
+            if self.merge_weights and self.merged:
+                # Make sure that the weights are not merged
+                self.weight.data -= (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
+                self.merged = False
+        else:
+            if self.merge_weights and not self.merged:
+                # Merge the weights and mark it
+                self.weight.data += (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
+                self.merged = True
+
+    def forward(self, x: torch.Tensor):
+        if self.r > 0 and not self.merged:
+            return F.conv1d(
+                x, 
+                self.weight + (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling,
+                self.bias, self.stride, self.padding, self.dilation, self.groups
+            )
+        return nn.Conv1d.forward(self, x)
