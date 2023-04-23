@@ -366,7 +366,7 @@ class Conv1d(nn.Conv1d, LoRALayer):
 
     def forward(self, x: torch.Tensor):
         if self.r > 0 and not self.merged:
-            return F.conv1d(
+            return F.Conv1d(
                 x, 
                 self.weight + (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling,
                 self.bias, self.stride, self.padding, self.dilation, self.groups
