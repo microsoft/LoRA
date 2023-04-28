@@ -71,7 +71,7 @@ class Embedding(nn.Embedding, LoRALayer):
             if self.merge_weights and not self.merged:
                 # Merge the weights and mark it
                 if self.r > 0:
-                    self.weight.data += (self.lora_B @ self.lora_A) * self.scaling
+                    self.weight.data += (self.lora_B @ self.lora_A).transpose(0, 1) * self.scaling
                 self.merged = True
         
     def forward(self, x: torch.Tensor):
