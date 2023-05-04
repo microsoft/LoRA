@@ -91,7 +91,6 @@ class Attention(nn.Module):
         self.n_head = config.n_head
         self.split_size = n_state
         self.scale = scale
-        self.c_attn = Conv1D(n_state * 3, nx)
         self.c_attn = lora.MergedLinear(
             nx, n_state * 3, 
             r=config.lora_attn_dim, 
