@@ -277,7 +277,7 @@ class Conv2d(nn.Conv2d, LoRALayer):
                 self.weight.new_zeros((r*kernel_size, in_channels*kernel_size))
             )
             self.lora_B = nn.Parameter(
-                self.weight.new_zeros((out_channels*kernel_size, r*kernel_size))
+                self.weight.new_zeros((out_channels//self.groups*kernel_size, r*kernel_size))
             )
             self.scaling = self.lora_alpha / self.r
             # Freezing the pre-trained weight matrix
