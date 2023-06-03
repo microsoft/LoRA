@@ -72,7 +72,7 @@ There are several directories in this repo:
 
  1. Installing `loralib` is simply
  ```
- # pip install git+https://github.com/nivibilla/LoRA.git
+ # pip install loralib
  ```
 
  2. You can choose to adapt some layers by replacing them with counterparts implemented in `loralib`. We only support `nn.Linear`, `nn.Embedding`, and `nn.Conv2d` for now. We also support a `MergedLinear` for cases where a single `nn.Linear` represents more than one layers, such as in some implementations of the attention `qkv` projection (see Additional Notes for more).
