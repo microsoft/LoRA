@@ -252,63 +252,67 @@ class MergedLinear(nn.Linear, LoRALayer):
                 ).transpose(-2, -1)
                 result += self.zero_pad(after_B) * self.scaling
             return result
-            
+        
 
-class Conv2d(nn.Conv2d, LoRALayer):
-    # LoRA implemented in a dense layer
-    def __init__(
-        self, 
-        in_channels: int, 
-        out_channels: int,
-        kernel_size: int,
-        r: int = 0, 
-        lora_alpha: int = 1, 
-        lora_dropout: float = 0.,
-        merge_weights: bool = True,
-        **kwargs
-    ):
-        nn.Conv2d.__init__(self, in_channels, out_channels, kernel_size, **kwargs)
-        LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout,
-                           merge_weights=merge_weights)
-        assert type(kernel_size) is int
+class ConvLoRA(nn.Module, LoRALayer):
+    def __init__(self, conv_module, in_channels, out_channels, kernel_size, r=0, lora_alpha=1, lora_dropout=0., merge_weights=True, **kwargs):
+        super(ConvLoRA, self).__init__()
+        self.conv = conv_module(in_channels, out_channels, kernel_size, **kwargs)
+        LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout, merge_weights=merge_weights)
+        assert isinstance(kernel_size, int)
         # Actual trainable parameters
         if r > 0:
             self.lora_A = nn.Parameter(
-                self.weight.new_zeros((r*kernel_size, in_channels*kernel_size))
+                self.conv.weight.new_zeros((r * kernel_size, in_channels * kernel_size))
             )
             self.lora_B = nn.Parameter(
-                self.weight.new_zeros((out_channels//self.groups*kernel_size, r*kernel_size))
+              self.conv.weight.new_zeros((out_channels//self.groups*kernel_size, r*kernel_size))
             )
             self.scaling = self.lora_alpha / self.r
             # Freezing the pre-trained weight matrix
-            self.weight.requires_grad = False
+            self.conv.weight.requires_grad = False
         self.reset_parameters()
+        self.merged = False
 
     def reset_parameters(self):
-        nn.Conv2d.reset_parameters(self)
+        self.conv.reset_parameters()
         if hasattr(self, 'lora_A'):
             # initialize A the same way as the default for nn.Linear and B to zero
             nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
             nn.init.zeros_(self.lora_B)
 
-    def train(self, mode: bool = True):
-        nn.Conv2d.train(self, mode)
+    def train(self, mode=True):
+        super(ConvLoRA, self).train(mode)
         if mode:
             if self.merge_weights and self.merged:
                 # Make sure that the weights are not merged
-                self.weight.data -= (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
+                self.conv.weight.data -= (self.lora_B @ self.lora_A).view(self.conv.weight.shape) * self.scaling
                 self.merged = False
         else:
             if self.merge_weights and not self.merged:
                 # Merge the weights and mark it
-                self.weight.data += (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
+                self.conv.weight.data += (self.lora_B @ self.lora_A).view(self.conv.weight.shape) * self.scaling
                 self.merged = True
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x):
         if self.r > 0 and not self.merged:
-            return F.conv2d(
+            return self.conv._conv_forward(
                 x, 
-                self.weight + (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling,
-                self.bias, self.stride, self.padding, self.dilation, self.groups
+                self.conv.weight + (self.lora_B @ self.lora_A).view(self.conv.weight.shape) * self.scaling,
+                self.conv.bias
             )
-        return nn.Conv2d.forward(self, x)
+        return self.conv(x)
+
+class Conv2d(ConvLoRA):
+    def __init__(self, *args, **kwargs):
+        super(Conv2d, self).__init__(nn.Conv2d, *args, **kwargs)
+
+class Conv1d(ConvLoRA):
+    def __init__(self, *args, **kwargs):
+        super(Conv1d, self).__init__(nn.Conv1d, *args, **kwargs)
+
+# Can Extend to other ones like this
+
+class Conv3d(ConvLoRA):
+    def __init__(self, *args, **kwargs):
+        super(Conv3d, self).__init__(nn.Conv3d, *args, **kwargs)
