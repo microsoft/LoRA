@@ -77,13 +77,12 @@ class Embedding(nn.Embedding, LoRALayer):
     def forward(self, x: torch.Tensor):
         if self.r > 0 and not self.merged:
             result = nn.Embedding.forward(self, x)
-            if self.r > 0:
-                after_A = F.embedding(
-                    x, self.lora_A.transpose(0, 1), self.padding_idx, self.max_norm,
-                    self.norm_type, self.scale_grad_by_freq, self.sparse
-                )
-                result += (after_A @ self.lora_B.transpose(0, 1)) * self.scaling
-            return result
+            after_A = F.embedding(
+                x, self.lora_A.transpose(0, 1), self.padding_idx, self.max_norm,
+                self.norm_type, self.scale_grad_by_freq, self.sparse
+            )
+            result += (after_A @ self.lora_B.transpose(0, 1)) * self.scaling
+        return result
         else:
             return nn.Embedding.forward(self, x)
             
@@ -145,9 +144,8 @@ class Linear(nn.Linear, LoRALayer):
         def T(w):
             return w.transpose(0, 1) if self.fan_in_fan_out else w
         if self.r > 0 and not self.merged:
-            result = F.linear(x, T(self.weight), bias=self.bias)
-            if self.r > 0:
-                result += (self.lora_dropout(x) @ self.lora_A.transpose(0, 1) @ self.lora_B.transpose(0, 1)) * self.scaling
+            result = F.linear(x, T(self.weight), bias=self.bias)            
+            result += (self.lora_dropout(x) @ self.lora_A.transpose(0, 1) @ self.lora_B.transpose(0, 1)) * self.scaling
             return result
         else:
             return F.linear(x, T(self.weight), bias=self.bias)
