@@ -266,7 +266,7 @@ class ConvLoRA(nn.Module, LoRALayer):
                 self.conv.weight.new_zeros((r * kernel_size, in_channels * kernel_size))
             )
             self.lora_B = nn.Parameter(
-              self.conv.weight.new_zeros((out_channels//self.groups*kernel_size, r*kernel_size))
+              self.conv.weight.new_zeros((out_channels//self.conv.groups*kernel_size, r*kernel_size))
             )
             self.scaling = self.lora_alpha / self.r
             # Freezing the pre-trained weight matrix
