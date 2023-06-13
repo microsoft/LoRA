@@ -165,13 +165,13 @@ We thank in alphabetical order Jianfeng Gao, Jade Huang, Jiayuan Huang, Lisa Xia
 
 ## Citation
 ```
-@misc{hu2021lora,
-    title={LoRA: Low-Rank Adaptation of Large Language Models},
-    author={Hu, Edward and Shen, Yelong and Wallis, Phil and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Lu and Chen, Weizhu},
-    year={2021},
-    eprint={2106.09685},
-    archivePrefix={arXiv},
-    primaryClass={cs.CL}
+@inproceedings{
+hu2022lora,
+title={Lo{RA}: Low-Rank Adaptation of Large Language Models},
+author={Edward J Hu and Yelong Shen and Phillip Wallis and Zeyuan Allen-Zhu and Yuanzhi Li and Shean Wang and Lu Wang and Weizhu Chen},
+booktitle={International Conference on Learning Representations},
+year={2022},
+url={https://openreview.net/forum?id=nZeVKeeFYf9}
 }
 ```
 
