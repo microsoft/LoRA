@@ -1,7 +1,7 @@
 # LoRA: Low-Rank Adaptation of Large Language Models
 *(For the radio communication technique, see [LoRa](https://lora-alliance.org/).)*
 
-This repo contains the source code of the Python package `loralib` and several examples of how to integrate it with PyTorch models, such as those in HuggingFace.
+This repo contains the source code of the Python package `loralib` and several examples of how to integrate it with PyTorch models, such as those in Hugging Face.
 We only support PyTorch for now.
 See our paper for a detailed description of LoRA.
 
@@ -9,7 +9,7 @@ See our paper for a detailed description of LoRA.
 *Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen* <br>
 Paper: https://arxiv.org/abs/2106.09685 <br>
 
-*Update 2/2023: LoRA is now supported by the [State-of-the-art Parameter-Efficient Fine-Tuning (PEFT)](https://github.com/huggingface/peft) library by HuggingFace.*
+*Update 2/2023: LoRA is now supported by the [State-of-the-art Parameter-Efficient Fine-Tuning (PEFT)](https://github.com/huggingface/peft) library by Hugging Face.*
 
 LoRA reduces the number of trainable parameters by learning pairs of rank-decompostion matrices while freezing the original weights.
 This vastly reduces the storage requirement for large language models adapted to specific tasks and enables efficient task-switching during deployment all without introducing inference latency.
@@ -30,7 +30,7 @@ We obtain result comparable or superior to full finetuning on the GLUE benchmark
 |   | STSB (Pearson/Spearman Corr) | 91.2 | [<b>91.5</b>±.2/<b>91.3</b>±.2](https://github.com/microsoft/LoRA/releases/download/RoBERTa-base/roberta_base_lora_stsb.bin) |<b>92.9</b>/92.6| [<b>93.0</b>±.2/<b>92.9</b>±.3](https://github.com/microsoft/LoRA/releases/download/DeBERTa/deberta_v2_xxlarge_lora_stsb.bin)      |
 |   | Average  | 86.40 | <b>87.24</b> | 91.06 | <b>91.32</b> |
 
-<i>Note: You still need the original pre-trained checkpoint from [HuggingFace](https://huggingface.co/) to use the LoRA checkpoints.</i>
+<i>Note: You still need the original pre-trained checkpoint from [Hugging Face](https://huggingface.co/) to use the LoRA checkpoints.</i>
 
 Fine-tuning numbers are taken from [Liu et al. (2019)](https://arxiv.org/abs/1907.11692) and [He et al. (2020)](https://arxiv.org/abs/2006.03654).  We include confidence intervals on results from our experiments. Please follow the instructions in `examples/NLU/` to reproduce our results.
 
