@@ -285,13 +285,15 @@ class ConvLoRA(nn.Module, LoRALayer):
         super(ConvLoRA, self).train(mode)
         if mode:
             if self.merge_weights and self.merged:
-                # Make sure that the weights are not merged
-                self.conv.weight.data -= (self.lora_B @ self.lora_A).view(self.conv.weight.shape) * self.scaling
+                if self.r > 0:
+                    # Make sure that the weights are not merged
+                    self.conv.weight.data -= (self.lora_B @ self.lora_A).view(self.conv.weight.shape) * self.scaling
                 self.merged = False
         else:
             if self.merge_weights and not self.merged:
-                # Merge the weights and mark it
-                self.conv.weight.data += (self.lora_B @ self.lora_A).view(self.conv.weight.shape) * self.scaling
+                if self.r > 0:
+                    # Merge the weights and mark it
+                    self.conv.weight.data += (self.lora_B @ self.lora_A).view(self.conv.weight.shape) * self.scaling
                 self.merged = True
 
     def forward(self, x):
