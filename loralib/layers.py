@@ -82,7 +82,7 @@ class Embedding(nn.Embedding, LoRALayer):
                 self.norm_type, self.scale_grad_by_freq, self.sparse
             )
             result += (after_A @ self.lora_B.transpose(0, 1)) * self.scaling
-        return result
+            return result
         else:
             return nn.Embedding.forward(self, x)
             
