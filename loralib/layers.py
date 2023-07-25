@@ -205,7 +205,7 @@ class MergedLinear(nn.Linear, LoRALayer):
         result[:, self.lora_ind] = x.reshape(
             -1, self.out_features // len(self.enable_lora) * sum(self.enable_lora)
         )
-        return result.view((*x.shape[:-1], self.out_features))
+        return result.view((*x.shape[:-1], self.out_features)).T
 
     def train(self, mode: bool = True):
         def T(w):
@@ -220,7 +220,7 @@ class MergedLinear(nn.Linear, LoRALayer):
                         self.lora_B.data.unsqueeze(-1), 
                         groups=sum(self.enable_lora)
                     ).squeeze(0)
-                    self.weight.data -= self.zero_pad(T(delta_w * self.scaling))
+                    self.weight.data -= T(self.zero_pad(delta_w.T * self.scaling))
                 self.merged = False
         else:
             if self.merge_weights and not self.merged:
@@ -231,7 +231,7 @@ class MergedLinear(nn.Linear, LoRALayer):
                         self.lora_B.data.unsqueeze(-1), 
                         groups=sum(self.enable_lora)
                     ).squeeze(0)
-                    self.weight.data += self.zero_pad(T(delta_w * self.scaling))
+                    self.weight.data += T(self.zero_pad(delta_w.T * self.scaling))
                 self.merged = True        
 
     def forward(self, x: torch.Tensor):
@@ -247,7 +247,7 @@ class MergedLinear(nn.Linear, LoRALayer):
                     after_A.transpose(-2, -1), 
                     self.lora_B.unsqueeze(-1), 
                     groups=sum(self.enable_lora)
-                ).transpose(-2, -1)
+                )
                 result += self.zero_pad(after_B) * self.scaling
             return result
         
