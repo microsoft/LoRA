@@ -239,7 +239,7 @@ class MergedLinear(nn.Linear, LoRALayer):
         else:
             result = F.linear(x, T(self.weight), bias=self.bias)
             if self.r > 0:
-                result += self.lora_dropout(x) @ self.merge_AB().T * self.scaling
+                result += self.lora_dropout(x) @ T(self.merge_AB().T) * self.scaling
             return result
 
 class ConvLoRA(nn.Module, LoRALayer):
