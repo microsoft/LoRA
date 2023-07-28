@@ -200,12 +200,19 @@ class MergedLinear(nn.Linear, LoRALayer):
             nn.init.zeros_(self.lora_B)
 
     def zero_pad(self, x):
-        result = x.new_zeros((*x.shape[:-1], self.out_features))
-        result = result.view(-1, self.out_features)
-        result[:, self.lora_ind] = x.reshape(
-            -1, self.out_features // len(self.enable_lora) * sum(self.enable_lora)
-        )
-        return result.view((*x.shape[:-1], self.out_features)).T
+        result = x.new_zeros((len(self.lora_ind), *x.shape[1:]))
+        result[self.lora_ind] = x
+        return result
+
+    def merge_AB(self):
+        def T(w):
+            return w.transpose(0, 1) if self.fan_in_fan_out else w
+        delta_w = F.conv1d(
+            self.lora_A.unsqueeze(0), 
+            self.lora_B.unsqueeze(-1), 
+            groups=sum(self.enable_lora)
+        ).squeeze(0)
+        return T(self.zero_pad(delta_w))
 
     def train(self, mode: bool = True):
         def T(w):
@@ -215,23 +222,13 @@ class MergedLinear(nn.Linear, LoRALayer):
             if self.merge_weights and self.merged:
                 # Make sure that the weights are not merged
                 if self.r > 0 and any(self.enable_lora):
-                    delta_w = F.conv1d(
-                        self.lora_A.data.unsqueeze(0), 
-                        self.lora_B.data.unsqueeze(-1), 
-                        groups=sum(self.enable_lora)
-                    ).squeeze(0)
-                    self.weight.data -= T(self.zero_pad(delta_w.T * self.scaling))
+                    self.weight.data -= self.merge_AB() * self.scaling
                 self.merged = False
         else:
             if self.merge_weights and not self.merged:
                 # Merge the weights and mark it
                 if self.r > 0 and any(self.enable_lora):
-                    delta_w = F.conv1d(
-                        self.lora_A.data.unsqueeze(0), 
-                        self.lora_B.data.unsqueeze(-1), 
-                        groups=sum(self.enable_lora)
-                    ).squeeze(0)
-                    self.weight.data += T(self.zero_pad(delta_w.T * self.scaling))
+                    self.weight.data += self.merge_AB() * self.scaling
                 self.merged = True        
 
     def forward(self, x: torch.Tensor):
@@ -242,15 +239,8 @@ class MergedLinear(nn.Linear, LoRALayer):
         else:
             result = F.linear(x, T(self.weight), bias=self.bias)
             if self.r > 0:
-                after_A = F.linear(self.lora_dropout(x), self.lora_A)
-                after_B = F.conv1d(
-                    after_A.transpose(-2, -1), 
-                    self.lora_B.unsqueeze(-1), 
-                    groups=sum(self.enable_lora)
-                )
-                result += self.zero_pad(after_B) * self.scaling
+                result += self.lora_dropout(x) @ T(self.merge_AB().T) * self.scaling
             return result
-        
 
 class ConvLoRA(nn.Module, LoRALayer):
     def __init__(self, conv_module, in_channels, out_channels, kernel_size, r=0, lora_alpha=1, lora_dropout=0., merge_weights=True, **kwargs):
