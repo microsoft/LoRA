@@ -133,3 +133,7 @@ post/
 *.nupkg
 /Packages
 
+/examples/NLU/wandb/
+/examples/NLU/output/
+/examples/NLU/runs/
+/examples/NLU/sst2

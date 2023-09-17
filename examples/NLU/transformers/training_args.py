@@ -309,7 +309,7 @@ class TrainingArguments:
     do_eval: bool = field(default=None, metadata={"help": "Whether to run eval on the dev set."})
     do_predict: bool = field(default=False, metadata={"help": "Whether to run predictions on the test set."})
     evaluation_strategy: IntervalStrategy = field(
-        default="no",
+        default="epoch",
         metadata={"help": "The evaluation strategy to use."},
     )
     prediction_loss_only: bool = field(
@@ -460,7 +460,7 @@ class TrainingArguments:
         metadata={"help": "Whether or not to load the best model found during training at the end of training."},
     )
     metric_for_best_model: Optional[str] = field(
-        default=None, metadata={"help": "The metric to use to compare two different models."}
+        default="eval_accuracy", metadata={"help": "The metric to use to compare two different models."}
     )
     greater_is_better: Optional[bool] = field(
         default=None, metadata={"help": "Whether the `metric_for_best_model` should be maximized or not."}
@@ -493,7 +493,7 @@ class TrainingArguments:
         metadata={"help": "Whether or not to group samples of roughly the same length together when batching."},
     )
     report_to: Optional[List[str]] = field(
-        default=None, metadata={"help": "The list of integrations to report the results and logs to."}
+        default="wandb", metadata={"help": "The list of integrations to report the results and logs to."}
     )
     ddp_find_unused_parameters: Optional[bool] = field(
         default=None,
@@ -510,7 +510,9 @@ class TrainingArguments:
     )
     _n_gpu: int = field(init=False, repr=False, default=-1)
     cls_dropout: Optional[float] = field(default=None, metadata={"help": "cls drop out."})
-    use_deterministic_algorithms: Optional[bool] = field(default=False, metadata={"help": "Whether or not to use deterministic algorithms."})
+    use_deterministic_algorithms: Optional[bool] = field(
+        default=False, metadata={"help": "Whether or not to use deterministic algorithms."}
+    )
 
     def __post_init__(self):
         # expand paths, if not os.makedirs("~/bar") will make directory

@@ -112,6 +112,8 @@ from .training_args import ParallelMode, TrainingArguments
 from .utils import logging
 from .utils.modeling_auto_mapping import MODEL_FOR_QUESTION_ANSWERING_MAPPING_NAMES
 
+import loralib as lora
+import time
 
 _is_native_amp_available = False
 
@@ -554,7 +556,7 @@ class Trainer:
             num_workers=self.args.dataloader_num_workers,
             pin_memory=self.args.dataloader_pin_memory,
             worker_init_fn=seed_worker,
-            generator=g
+            generator=g,
         )
 
     def _get_eval_sampler(self, eval_dataset: Dataset) -> Optional[torch.utils.data.sampler.Sampler]:
@@ -655,7 +657,9 @@ class Trainer:
 
         return optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)
 
-    def create_scheduler(self, optimizer: torch.optim.Optimizer, num_training_steps: int) -> torch.optim.lr_scheduler.LambdaLR:
+    def create_scheduler(
+        self, optimizer: torch.optim.Optimizer, num_training_steps: int
+    ) -> torch.optim.lr_scheduler.LambdaLR:
         warmup_steps = (
             self.args.warmup_steps
             if self.args.warmup_steps > 0
@@ -680,10 +684,7 @@ class Trainer:
             self.optimizer = self.create_optimizer()
 
         if self.lr_scheduler is None:
-            self.lr_scheduler = self.create_scheduler(
-                optimizer=self.optimizer,
-                num_training_steps=num_training_steps
-            )
+            self.lr_scheduler = self.create_scheduler(optimizer=self.optimizer, num_training_steps=num_training_steps)
 
     def num_examples(self, dataloader: DataLoader) -> int:
         """
@@ -694,7 +695,7 @@ class Trainer:
         return len(dataloader.dataset)
 
     def _hp_search_setup(self, trial: Union["optuna.Trial", Dict[str, Any]]):
-        """ HP search setup code """
+        """HP search setup code"""
         self._trial = trial
 
         if self.hp_search_backend is None or trial is None:
@@ -1047,7 +1048,6 @@ class Trainer:
             self.control = self.callback_handler.on_epoch_begin(self.args, self.state, self.control)
 
             for step, inputs in enumerate(epoch_iterator):
-
                 # Skip past any already trained steps if resuming training
                 if steps_trained_in_current_epoch > 0:
                     steps_trained_in_current_epoch -= 1
@@ -1096,7 +1096,7 @@ class Trainer:
                             torch.nn.utils.clip_grad_norm_(
                                 amp.master_params(self.optimizer) if self.use_apex else model.parameters(),
                                 self.args.max_grad_norm,
-                                error_if_nonfinite=False
+                                error_if_nonfinite=False,
                             )
 
                     # Optimizer step
@@ -1578,19 +1578,29 @@ class Trainer:
             if isinstance(unwrap_model(self.model), PreTrainedModel):
                 if state_dict is None:
                     state_dict = self.model.state_dict()
-                unwrap_model(self.model).save_pretrained(output_dir, state_dict=state_dict)
+                # unwrap_model(self.model).save_pretrained(output_dir, state_dict=state_dict)
             else:
                 logger.info("Trainer.model is not a `PreTrainedModel`, only saving its state dict.")
                 if state_dict is None:
                     state_dict = self.model.state_dict()
-                torch.save(state_dict, os.path.join(output_dir, WEIGHTS_NAME))
+                # torch.save(state_dict, os.path.join(output_dir, WEIGHTS_NAME))
         else:
-            self.model.save_pretrained(output_dir, state_dict=state_dict)
+            pass
+            # self.model.save_pretrained(output_dir, state_dict=state_dict)
         if self.tokenizer is not None:
-            self.tokenizer.save_pretrained(output_dir)
+            pass
+            # self.tokenizer.save_pretrained(output_dir)
 
         # Good practice: save your training arguments together with the trained model
-        torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
+        # torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
+
+        print("##### SAVE LORA CKPT #####")
+        now = time
+        now_str = now.strftime("%Y-%m-%d_%H:%M")
+        torch.save(
+            lora.lora_state_dict(self.model),
+            os.path.join(output_dir, f"{now_str}_lorackpt.bin"),
+        )
 
     def store_flos(self):
         # Storing the number of floating-point operations that went into the model

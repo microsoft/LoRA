@@ -1,4 +1,4 @@
-name: NLU
+name: NLU_without_transformers
 channels:
   - pytorch
   - nvidia
