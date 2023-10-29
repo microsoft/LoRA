@@ -119,7 +119,8 @@ class Linear(nn.Linear, LoRALayer):
     def reset_parameters(self):
         nn.Linear.reset_parameters(self)
         if hasattr(self, 'lora_A'):
-            # initialize A the same way as the default for nn.Linear and B to zero
+            # initialize B the same way as the default for nn.Linear and A to zero
+            # this is different than what is described in the paper but should not affect performance
             nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
             nn.init.zeros_(self.lora_B)
 
