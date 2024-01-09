@@ -1,5 +1,4 @@
 # LoRA: Low-Rank Adaptation of Large Language Models
-*(For the radio communication technique, see [LoRa](https://lora-alliance.org/).)*
 
 This repo contains the source code of the Python package `loralib` and several examples of how to integrate it with PyTorch models, such as those in Hugging Face.
 We only support PyTorch for now.
@@ -8,6 +7,7 @@ See our paper for a detailed description of LoRA.
 **LoRA: Low-Rank Adaptation of Large Language Models** <br>
 *Edward J. Hu\*, Yelong Shen\*, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen* <br>
 Paper: https://arxiv.org/abs/2106.09685 <br>
+Video explainer: https://www.youtube.com/watch?v=DhRoTONcyZE <br>
 
 *Update 2/2023: LoRA is now supported by the [State-of-the-art Parameter-Efficient Fine-Tuning (PEFT)](https://github.com/huggingface/peft) library by Hugging Face.*
 
