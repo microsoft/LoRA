@@ -152,6 +152,49 @@ class Linear(nn.Linear, LoRALayer):
             return F.linear(x, T(self.weight), bias=self.bias)
 
 
+
+class HomotopyLinearLoRA(Linear):
+    def __init__(
+            self,
+            in_features: int,
+            out_features: int,
+            homotopy_parameter: float = 0.0,
+            **kwargs
+    ):
+        super(HomotopyLinearLoRA, self).__init__(in_features, out_features, **kwargs)
+        self.homotopy_parameter = homotopy_parameter
+
+    def set_homotopy_parameter(self, homotopy_parameter: float):
+        self.homotopy_parameter = homotopy_parameter
+
+
+    def reset_parameters(self):
+        nn.Linear.reset_parameters(self)
+        if hasattr(self, 'lora_A'):
+            # initialize B the same way as the default for nn.Linear and A to zero
+            # this is different than what is described in the paper but should not affect performance
+            nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.lora_B, a=math.sqrt(5))
+
+    def homotopy_activation(self, x):
+        relu_part = F.relu(x)
+        sigmoid_part = torch.sigmoid(x)
+        return self.homotopy_parameter * relu_part + (1 - self.homotopy_parameter) * sigmoid_part
+
+    def forward(self, x: torch.Tensor):
+        def T(w):
+            return w.transpose(0, 1) if self.fan_in_fan_out else w
+
+        if self.r > 0 and not self.merged:
+            result = F.linear(x, T(self.weight), bias=self.bias)
+            result += (self.lora_dropout(x) @ self.lora_A.transpose(0, 1) @ self.lora_B.transpose(0, 1)) * self.scaling
+            result = self.homotopy_activation(result)
+            return result
+        else:
+            result = F.linear(x, T(self.weight), bias=self.bias)
+            return result
+
+
 class MergedLinear(nn.Linear, LoRALayer):
     # LoRA implemented in a dense layer
     def __init__(
@@ -243,6 +286,47 @@ class MergedLinear(nn.Linear, LoRALayer):
                 result += self.lora_dropout(x) @ T(self.merge_AB().T) * self.scaling
             return result
 
+class MergedHomotopyLinearLoRA(MergedLinear):
+    def __init__(
+            self,
+            in_features: int,
+            out_features: int,
+            homotopy_parameter: float = 0.0,
+            **kwargs
+    ):
+        super(MergedHomotopyLinearLoRA, self).__init__(in_features, out_features, **kwargs)
+        self.homotopy_parameter = homotopy_parameter
+
+    def set_homotopy_parameter(self, homotopy_parameter: float):
+        self.homotopy_parameter = homotopy_parameter
+
+    def reset_parameters(self):
+        nn.Linear.reset_parameters(self)
+        if hasattr(self, 'lora_A'):
+            # initialize B the same way as the default for nn.Linear and A to zero
+            # this is different than what is described in the paper but should not affect performance
+            nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.lora_B, a=math.sqrt(5))
+
+    def homotopy_activation(self, x):
+        relu_part = F.relu(x)
+        sigmoid_part = torch.sigmoid(x)
+        return self.homotopy_parameter * relu_part + (1 - self.homotopy_parameter) * sigmoid_part
+
+    def forward(self, x: torch.Tensor):
+        def T(w):
+            return w.transpose(0, 1) if self.fan_in_fan_out else w
+        if self.merged:
+            result = F.linear(x, T(self.weight), bias=self.bias)
+            result = self.homotopy_activation(result)
+            return result
+        else:
+            result = F.linear(x, T(self.weight), bias=self.bias)
+            if self.r > 0:
+                result += self.lora_dropout(x) @ T(self.merge_AB().T) * self.scaling
+                result = self.homotopy_activation(result)
+            return result
+
 class ConvLoRA(nn.Module, LoRALayer):
     def __init__(self, conv_module, in_channels, out_channels, kernel_size, r=0, lora_alpha=1, lora_dropout=0., merge_weights=True, **kwargs):
         super(ConvLoRA, self).__init__()
@@ -307,3 +391,40 @@ class Conv1d(ConvLoRA):
 class Conv3d(ConvLoRA):
     def __init__(self, *args, **kwargs):
         super(Conv3d, self).__init__(nn.Conv3d, *args, **kwargs)
+
+if __name__ == '__main__':
+    # test class HomotopyLinearLoRA
+    model = HomotopyLinearLoRA(10, 10, r=1, lora_alpha=1, lora_dropout=0.1, homotopy_parameter=0.5)
+    print(model)
+    x = torch.randn(10, 10)
+
+    y = model(x)
+    print(y)
+    model.set_homotopy_parameter(0.1)
+    y = model(x)
+    print(y)
+    print(model.r)
+    print(model.lora_alpha)
+    print(model.lora_dropout)
+    print(model.homotopy_parameter)
+    model.train(mode=False)
+    model.train(mode=True)
+    model.reset_parameters()
+    model.set_homotopy_parameter(0.5)
+    y = model(x)
+    print(model.homotopy_parameter)
+
+    c_attn = MergedHomotopyLinearLoRA(
+        2, 2 * 3,
+        r=1,
+        lora_alpha=1,
+        lora_dropout=0.1,
+        enable_lora=[True, False, True],
+        fan_in_fan_out=True,
+        merge_weights=False
+    )
+    print(c_attn)
+    x = torch.randn(2, 2)
+    y = c_attn(x)
+    print(y)
+    print(c_attn.merge_AB())
