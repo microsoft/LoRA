@@ -16,6 +16,8 @@ class LoRALayer():
         lora_alpha: int, 
         lora_dropout: float,
         merge_weights: bool,
+        s_num: int = 1, # Number of scale. s refers to scale. (modified.)
+        b_num: list = [1] # Number of blocks in each scale. b refers to block. (modified.)
     ):
         self.r = r
         self.lora_alpha = lora_alpha
@@ -27,6 +29,9 @@ class LoRALayer():
         # Mark the weight as unmerged
         self.merged = False
         self.merge_weights = merge_weights
+
+        self.s_num = s_num # modified.
+        self.b_num = b_num # modified.
 
 
 class Embedding(nn.Embedding, LoRALayer):
@@ -94,21 +99,32 @@ class Linear(nn.Linear, LoRALayer):
         in_features: int, 
         out_features: int, 
         r: int = 0, 
+        s_num: int = 1, # Number of scale. s refers to scale. (modified.)
+        b_num: list = [1], # Number of blocks in each scale. b refers to block. (modified.)
         lora_alpha: int = 1, 
         lora_dropout: float = 0.,
         fan_in_fan_out: bool = False, # Set this to True if the layer to replace stores weight like (fan_in, fan_out)
         merge_weights: bool = True,
         **kwargs
     ):
+        
+        self.in_features = in_features # modified.
+        self.out_features = out_features # modified.
+        self.s_num = s_num # modified.
+        self.b_num = b_num # modified.
+
         nn.Linear.__init__(self, in_features, out_features, **kwargs)
         LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout,
-                           merge_weights=merge_weights)
+                           merge_weights=merge_weights, s_num=s_num, b_num=b_num) # modified.
 
         self.fan_in_fan_out = fan_in_fan_out
         # Actual trainable parameters
         if r > 0:
-            self.lora_A = nn.Parameter(self.weight.new_zeros((r, in_features)))
-            self.lora_B = nn.Parameter(self.weight.new_zeros((out_features, r)))
+            for i in range(s_num):
+                setattr(self, f'lora_A_{i}', nn.Parameter(self.weight.new_zeros((b_num[i], b_num[i], in_features//b_num[i], r)))) # modified.
+                setattr(self, f'lora_B_{i}', nn.Parameter(self.weight.new_zeros((b_num[i], b_num[i], r, out_features//b_num[i])))) # modified.
+            # self.lora_A = nn.Parameter(self.weight.new_zeros((r, in_features)))
+            # self.lora_B = nn.Parameter(self.weight.new_zeros((out_features, r)))
             self.scaling = self.lora_alpha / self.r
             # Freezing the pre-trained weight matrix
             self.weight.requires_grad = False
@@ -118,11 +134,16 @@ class Linear(nn.Linear, LoRALayer):
 
     def reset_parameters(self):
         nn.Linear.reset_parameters(self)
-        if hasattr(self, 'lora_A'):
-            # initialize B the same way as the default for nn.Linear and A to zero
-            # this is different than what is described in the paper but should not affect performance
-            nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
-            nn.init.zeros_(self.lora_B)
+        # modified.
+        for i in range(self.s_num):
+            if hasattr(self, f'lora_A_{i}'):
+                nn.init.kaiming_uniform_(getattr(self, f'lora_A_{i}'), a=math.sqrt(5))
+                nn.init.zeros_(getattr(self, f'lora_B_{i}'))
+        # if hasattr(self, 'lora_A'):
+        #     # initialize B the same way as the default for nn.Linear and A to zero
+        #     # this is different than what is described in the paper but should not affect performance
+        #     nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+        #     nn.init.zeros_(self.lora_B)
 
     def train(self, mode: bool = True):
         def T(w):
@@ -132,13 +153,21 @@ class Linear(nn.Linear, LoRALayer):
             if self.merge_weights and self.merged:
                 # Make sure that the weights are not merged
                 if self.r > 0:
-                    self.weight.data -= T(self.lora_B @ self.lora_A) * self.scaling
+                    # modified.
+                    for i in range(self.s_num):
+                        temp = torch.matmul(getattr(self, f'lora_A_{i}'), getattr(self, f'lora_B_{i}')).transpose(1, 2).reshape(self.in_features, self.out_features)
+                        self.weight.data -= T(temp.transpose(0,1)) * self.scaling
+                    # self.weight.data -= T(self.lora_B @ self.lora_A) * self.scaling
                 self.merged = False
         else:
             if self.merge_weights and not self.merged:
                 # Merge the weights and mark it
                 if self.r > 0:
-                    self.weight.data += T(self.lora_B @ self.lora_A) * self.scaling
+                    # modified.
+                    for i in range(self.s_num):
+                        temp = torch.matmul(getattr(self, f'lora_A_{i}'), getattr(self, f'lora_B_{i}')).transpose(1, 2).reshape(self.in_features, self.out_features)
+                        self.weight.data += T(temp.transpose(0,1)) * self.scaling
+                    # self.weight.data += T(self.lora_B @ self.lora_A) * self.scaling
                 self.merged = True       
 
     def forward(self, x: torch.Tensor):
@@ -146,7 +175,12 @@ class Linear(nn.Linear, LoRALayer):
             return w.transpose(0, 1) if self.fan_in_fan_out else w
         if self.r > 0 and not self.merged:
             result = F.linear(x, T(self.weight), bias=self.bias)            
-            result += (self.lora_dropout(x) @ self.lora_A.transpose(0, 1) @ self.lora_B.transpose(0, 1)) * self.scaling
+            # It is modified.
+            temp = 0
+            for i in range(self.s_num):
+                temp += torch.matmul(getattr(self, f'lora_A_{i}'), getattr(self, f'lora_B_{i}')).transpose(1, 2).reshape(self.in_features, self.out_features)   
+            result += (self.lora_dropout(x) @ temp) * self.scaling
+            # result += (self.lora_dropout(x) @ self.lora_A.transpose(0, 1) @ self.lora_B.transpose(0, 1)) * self.scaling
             return result
         else:
             return F.linear(x, T(self.weight), bias=self.bias)

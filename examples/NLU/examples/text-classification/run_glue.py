@@ -185,6 +185,10 @@ class ModelArguments:
         default=None,
         metadata={"help": "LoRA r"},
     )
+    b_num: Optional[str] = field(
+        default=None,
+        metadata={"help": "Number of blocks in each scale"},
+    )
     lora_path: Optional[str] = field(
         default=None,
         metadata={"help": "The file path of LoRA parameters."},
@@ -231,6 +235,13 @@ def main():
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
+    if model_args.b_num is not None:
+        model_args.b_num = [int(num) for num in model_args.b_num.split(',')]
+        model_args.s_num = len(model_args.b_num)
+    else:
+        model_args.b_num = [1]
+        model_args.s_num = 1
 
     torch.use_deterministic_algorithms(training_args.use_deterministic_algorithms)
     logger.info("use_deterministic_algorithms: " + str(torch.are_deterministic_algorithms_enabled()))
@@ -359,6 +370,8 @@ def main():
         reg_loss_wgt=model_args.reg_loss_wgt,
         masking_prob=model_args.masking_prob,
     )
+    config.s_num = model_args.s_num
+    config.b_num = model_args.b_num
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
