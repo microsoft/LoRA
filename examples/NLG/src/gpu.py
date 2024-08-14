@@ -18,7 +18,7 @@ import torch.distributed as dist
 
 def add_gpu_params(parser: argparse.ArgumentParser):
     parser.add_argument("--platform", default='k8s', type=str, help='platform cloud')
-    parser.add_argument("--local_rank", default=0, type=int, help='local rank')
+    parser.add_argument("--local_rank", "--local-rank", default=0, type=int, help='local rank')
     parser.add_argument("--rank", default=0, type=int, help='rank')
     parser.add_argument("--device", default=0, type=int, help='device')
     parser.add_argument("--world_size", default=0, type=int, help='world size')
