@@ -20,14 +20,14 @@ import logging
 import os
 import random
 import sys
+import time
 import torch
+import numpy as np
+import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
 from typing import Optional
-
-import numpy as np
 from datasets import load_dataset
 from evaluate import load as load_metric
-
 
 import transformers
 from transformers import (
@@ -45,8 +45,6 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
 from transformers.utils import check_min_version
-
-
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.4.0")
 
@@ -63,6 +61,7 @@ task_to_keys = {
 }
 
 logger = logging.getLogger(__name__)
+
 
 
 @dataclass
@@ -622,6 +621,46 @@ def main():
 def _mp_fn(index):
     # For xla_spawn (TPUs)
     main()
+
+# === CUSTOM INFERENCE TIMING AFTER TRAINING/EVAL ===
+import time
+import matplotlib.pyplot as plt
+
+print("\n=== Running Custom Inference Timing ===")
+
+sample_sentence = "The ship sank beneath the waves."
+
+# Preprocessing
+start_pre = time.time()
+inputs = tokenizer(sample_sentence, return_tensors="pt", padding=True, truncation=True)
+end_pre = time.time()
+
+# Inference
+start_inf = time.time()
+with torch.no_grad():
+    outputs = model(**inputs)
+end_inf = time.time()
+
+# Postprocessing
+start_post = time.time()
+prediction = torch.argmax(outputs.logits, dim=-1).item()
+end_post = time.time()
+
+# Print prediction and timing
+print(f"\nPrediction: {prediction} (1 = acceptable, 0 = not acceptable)")
+print(f"Preprocessing time: {end_pre - start_pre:.4f} sec")
+print(f"Inference time:     {end_inf - start_inf:.4f} sec")
+print(f"Postprocessing time:{end_post - start_post:.4f} sec\n")
+
+# Plot timing
+times = [end_pre - start_pre, end_inf - start_inf, end_post - start_post]
+labels = ['Preprocessing', 'Inference', 'Postprocessing']
+
+plt.bar(labels, times)
+plt.title('Inference Timing Breakdown')
+plt.ylabel('Seconds')
+plt.show()
+
 
 
 if __name__ == "__main__":
