@@ -113,7 +113,7 @@ def bleu_score(refs_path, hyps_path, num_refs):
     result = subprocess.check_output(command, shell=True)
     try:
         bleu = float(re.findall('BLEU = (.+?),', str(result))[0])
-    except:
+    except Exception:
         logging.error('ERROR ON COMPUTING METEOR. MAKE SURE YOU HAVE PERL INSTALLED GLOBALLY ON YOUR MACHINE.')
         print('ERROR ON COMPUTING METEOR. MAKE SURE YOU HAVE PERL INSTALLED GLOBALLY ON YOUR MACHINE.')
         bleu = -1
@@ -156,7 +156,7 @@ def meteor_score(references, hypothesis, num_refs, lng='en'):
         command += '{0} {1} -l {2} -norm -r {3}'.format(hyps_tmp, refs_tmp, lng, num_refs)
         result = subprocess.check_output(command, shell=True)
         meteor = result.split(b'\n')[-2].split()[-1]
-    except:
+    except Exception:
         logging.error('ERROR ON COMPUTING METEOR. MAKE SURE YOU HAVE JAVA INSTALLED GLOBALLY ON YOUR MACHINE.')
         print('ERROR ON COMPUTING METEOR. MAKE SURE YOU HAVE JAVA INSTALLED GLOBALLY ON YOUR MACHINE.')
         meteor = -1
@@ -164,7 +164,7 @@ def meteor_score(references, hypothesis, num_refs, lng='en'):
     try:
         os.remove(hyps_tmp)
         os.remove(refs_tmp)
-    except:
+    except Exception:
         pass
     logging.info('FINISHING TO COMPUTE METEOR...')
     print('FINISHING TO COMPUTE METEOR...')
@@ -199,14 +199,14 @@ def chrF_score(references, hypothesis, num_refs, nworder, ncorder, beta):
 
     try:
         totalF, averageTotalF, totalPrec, totalRec = computeChrF(rtxt, htxt, nworder, ncorder, beta, None)
-    except:
+    except Exception:
         logging.error('ERROR ON COMPUTING CHRF++.')
         print('ERROR ON COMPUTING CHRF++.')
         totalF, averageTotalF, totalPrec, totalRec = -1, -1, -1, -1
     try:
         os.remove(hyps_tmp)
         os.remove(refs_tmp)
-    except:
+    except Exception:
         pass
     logging.info('FINISHING TO COMPUTE CHRF++...')
     print('FINISHING TO COMPUTE CHRF++...')
@@ -225,7 +225,7 @@ def ter_score(references, hypothesis, num_refs):
             else:
                 try:
                     ter_score = pyter.ter(hyp.split(), ref.split())
-                except:
+                except Exception:
                     ter_score = 1
             candidates.append(ter_score)
 
@@ -250,7 +250,7 @@ def bert_score_(references, hypothesis, lng='en'):
         F1 = float(sum(F1) / len(F1))
         P = float(sum(P) / len(P))
         R = float(sum(R) / len(R))
-    except:
+    except Exception:
         P, R, F1 = 0, 0, 0
     return P, R, F1
 
