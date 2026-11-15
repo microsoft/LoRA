@@ -2,7 +2,7 @@ export num_gpus=8
 export CUBLAS_WORKSPACE_CONFIG=":16:8" # https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
 export PYTHONHASHSEED=0
 export output_dir="./adapter_houlsby_roberta_large_mnli"
-python -m torch.distributed.launch --nproc_per_node=num_gpus \
+python -m torch.distributed.launch --nproc_per_node=$num_gpus \
 examples/text-classification/run_glue.py \
 --model_name_or_path roberta-large \
 --task_name mnli \
