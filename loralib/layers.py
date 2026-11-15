@@ -239,7 +239,7 @@ class MergedLinear(nn.Linear, LoRALayer):
             return F.linear(x, T(self.weight), bias=self.bias)
         else:
             result = F.linear(x, T(self.weight), bias=self.bias)
-            if self.r > 0:
+            if self.r > 0 and any(self.enable_lora):
                 result += self.lora_dropout(x) @ T(self.merge_AB().T) * self.scaling
             return result
 
